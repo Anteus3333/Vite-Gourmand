@@ -1,0 +1,16 @@
+# Secrets et config locale (ne jamais committer)
+config/database.local.php
+config/mail.local.php
+
+# Logs locaux
+logs/
+
+# Fichiers temporaires de migration / debug
+_migrate*.php
+_extract_*.php
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

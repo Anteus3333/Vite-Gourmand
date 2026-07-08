@@ -1,0 +1,10 @@
+# Active le module de réécriture d'URL d'Apache
+RewriteEngine On
+
+# Si le fichier ou le dossier demandé existe réellement (css, images, js...),
+# on le sert directement sans passer par le routeur
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Sinon, on redirige tout vers index.php en passant le chemin dans ?url=
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

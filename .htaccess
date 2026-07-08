@@ -1,0 +1,4 @@
+# Si le DocumentRoot ne peut pas pointer vers public/, redirige les requêtes.
+RewriteEngine On
+RewriteRule ^$ public/ [L]
+RewriteRule (.*) public/$1 [L]

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="Menu traiteur">
+  <defs><linearGradient id="g0" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#666"/><stop offset="100%" stop-color="#999"/></linearGradient></defs>
+  <rect width="800" height="500" fill="url(#g0)"/>
+  <circle cx="650" cy="120" r="80" fill="rgba(255,255,255,.12)"/>
+  <circle cx="120" cy="380" r="60" fill="rgba(212,175,55,.25)"/>
+  <text x="40" y="420" font-family="Georgia,serif" font-size="42" fill="#fff" font-weight="bold">Menu traiteur</text>
+  <text x="40" y="460" font-family="sans-serif" font-size="20" fill="rgba(255,255,255,.85)">Vite &amp; Gourmand</text>
+</svg>
