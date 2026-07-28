@@ -5,14 +5,13 @@ os.makedirs(os.path.join(base, 'menus'), exist_ok=True)
 os.makedirs(os.path.join(base, 'plats'), exist_ok=True)
 
 
-def svg_menu(n, title, c1, c2):
+def svg_menu(n, title, c1, c2, accent='#d4af37'):
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="{title}">
   <defs><linearGradient id="g{n}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="{c1}"/><stop offset="100%" stop-color="{c2}"/></linearGradient></defs>
   <rect width="800" height="500" fill="url(#g{n})"/>
   <circle cx="650" cy="120" r="80" fill="rgba(255,255,255,.12)"/>
-  <circle cx="120" cy="380" r="60" fill="rgba(212,175,55,.25)"/>
-  <text x="40" y="420" font-family="Georgia,serif" font-size="42" fill="#fff" font-weight="bold">{title}</text>
-  <text x="40" y="460" font-family="sans-serif" font-size="20" fill="rgba(255,255,255,.85)">Vite &amp; Gourmand</text>
+  <circle cx="120" cy="380" r="60" fill="{accent}" fill-opacity=".25"/>
+  <text x="40" y="440" font-family="Georgia,serif" font-size="42" fill="#fff" font-weight="bold">{title}</text>
 </svg>'''
 
 
@@ -26,11 +25,21 @@ menus = [
     (7, 'Dégustation', '#8b1c1c', '#b32424'),
     (8, 'Fruits de mer', '#023047', '#219ebc'),
 ]
+
+vues = [
+    ('', '', '#d4af37'),
+    (' — vue 2', True, '#c9a227'),
+    (' — vue 3', False, '#e8d5a3'),
+    (' — vue 4', True, '#fff'),
+]
+
 for n, t, c1, c2 in menus:
-    with open(os.path.join(base, 'menus', f'menu-{n}.svg'), 'w', encoding='utf-8') as f:
-        f.write(svg_menu(n, t, c1, c2))
-    with open(os.path.join(base, 'menus', f'menu-{n}-2.svg'), 'w', encoding='utf-8') as f:
-        f.write(svg_menu(n, t + ' — vue 2', c2, c1))
+    for i, (suffix, invert, accent) in enumerate(vues, start=1):
+        title = t + suffix
+        colors = (c2, c1) if invert else (c1, c2)
+        filename = f'menu-{n}.svg' if i == 1 else f'menu-{n}-{i}.svg'
+        with open(os.path.join(base, 'menus', filename), 'w', encoding='utf-8') as f:
+            f.write(svg_menu(f'{n}{i}', title, colors[0], colors[1], accent))
 
 with open(os.path.join(base, 'menus', 'default.svg'), 'w', encoding='utf-8') as f:
     f.write(svg_menu(0, 'Menu traiteur', '#666', '#999'))

@@ -19,7 +19,15 @@ class AuthController {
     public function register() {
         $titrePage = "Créer un compte - Vite et Gourmand";
         $erreurs = [];
-        $old = ['nom' => '', 'prenom' => '', 'telephone' => '', 'email' => '', 'adresse_postale' => ''];
+        $old = [
+            'nom'             => '',
+            'prenom'          => '',
+            'telephone'       => '',
+            'email'           => '',
+            'adresse_postale' => '',
+            'code_postal'     => '',
+            'ville'           => '',
+        ];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($old as $champ => $inutilise) {
@@ -37,6 +45,11 @@ class AuthController {
             if ($old['prenom'] === '')          $erreurs[] = "Le prénom est obligatoire.";
             if ($old['telephone'] === '')       $erreurs[] = "Le numéro de portable est obligatoire.";
             if ($old['adresse_postale'] === '') $erreurs[] = "L'adresse postale est obligatoire.";
+            if ($old['code_postal'] === '')      $erreurs[] = "Le code postal est obligatoire.";
+            elseif (!preg_match('/^\d{5}$/', $old['code_postal'])) {
+                $erreurs[] = "Le code postal doit contenir 5 chiffres.";
+            }
+            if ($old['ville'] === '')           $erreurs[] = "La ville est obligatoire.";
             if (!filter_var($old['email'], FILTER_VALIDATE_EMAIL)) {
                 $erreurs[] = "L'adresse mail n'est pas valide.";
             }
@@ -46,25 +59,30 @@ class AuthController {
                 $erreurs[] = "La confirmation ne correspond pas au mot de passe.";
             }
 
-            if (empty($erreurs) && $this->model->findByEmail($old['email'])) {
-                $erreurs[] = "Un compte existe déjà avec cette adresse mail.";
+            if (empty($erreurs) && ($existant = $this->model->findByEmail($old['email']))) {
+                if ($this->model->estEmailVerifie($existant)) {
+                    $erreurs[] = "Un compte existe déjà avec cette adresse mail.";
+                } else {
+                    // Compte créé mais jamais confirmé : on renvoie un nouveau lien
+                    $token = $this->model->reactiverInscriptionNonVerifiee(
+                        (int) $existant['utilisateur_id'],
+                        $old + ['password' => $password]
+                    );
+                    if ($token) {
+                        $this->envoyerMailConfirmation($old['email'], $old['prenom'], $token);
+                        $_SESSION['flash_succes'] = 'Un compte était déjà en attente de confirmation avec cette adresse. Un nouvel e-mail de confirmation vient de vous être envoyé (valable 24 heures).';
+                        header('Location: ' . BASE_URL . '/login');
+                        exit;
+                    }
+                    $erreurs[] = "Impossible de renvoyer le mail de confirmation. Contactez-nous.";
+                }
             }
 
             if (empty($erreurs)) {
-                $this->model->create($old + ['password' => $password]);
+                $compte = $this->model->create($old + ['password' => $password]);
+                $this->envoyerMailConfirmation($old['email'], $old['prenom'], $compte['token']);
 
-                // Mail de bienvenue automatique (cahier des charges)
-                (new Mailer())->send(
-                    $old['email'],
-                    "Bienvenue chez Vite & Gourmand !",
-                    "Bonjour {$old['prenom']},\n\n"
-                    . "Votre compte a bien été créé sur le site Vite & Gourmand.\n"
-                    . "Vous pouvez dès maintenant vous connecter avec votre adresse mail "
-                    . "et découvrir nos menus.\n\n"
-                    . "À très bientôt,\nJulie et José"
-                );
-
-                $_SESSION['flash_succes'] = "Votre compte a bien été créé ! Un mail de bienvenue vous a été envoyé. Vous pouvez maintenant vous connecter.";
+                $_SESSION['flash_succes'] = 'Votre compte a été créé. Un e-mail de confirmation vient de vous être envoyé : cliquez sur le lien pour activer votre compte avant de vous connecter.';
                 header('Location: ' . BASE_URL . '/login');
                 exit;
             }
@@ -106,6 +124,8 @@ class AuthController {
                 } elseif (isset($utilisateur['actif']) && !(int) $utilisateur['actif']) {
                     $tentatives->enregistrer($old['email'], $ip);
                     $erreurs[] = "Ce compte a été désactivé. Contactez l'administration.";
+                } elseif (!$this->model->estEmailVerifie($utilisateur)) {
+                    $erreurs[] = "Votre adresse e-mail n'est pas encore confirmée. Consultez votre boîte mail (et les spams) pour activer votre compte.";
                 } else {
                     // Connexion réussie : on remet le compteur de tentatives à zéro
                     $tentatives->purger($old['email']);
@@ -174,9 +194,9 @@ class AuthController {
 
         // On redémarre une session propre uniquement pour le message de confirmation
         session_start();
-        $_SESSION['flash_succes'] = "Vous êtes bien déconnecté(e). À bientôt !";
+        $_SESSION['flash_succes'] = 'Votre session est terminée. À bientôt chez Vite & Gourmand.';
 
-        header('Location: ' . BASE_URL . '/');
+        header('Location: ' . BASE_URL . '/login');
         exit;
     }
 
@@ -201,17 +221,23 @@ class AuthController {
                 $token = bin2hex(random_bytes(32));
                 $this->model->saveResetToken((int) $utilisateur['utilisateur_id'], $token);
 
-                $lien = 'http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_URL . '/reinitialisation?token=' . $token;
+                $lien = UrlHelper::absolue('/reinitialisation?token=' . urlencode($token));
+
+                $html = '<p>Bonjour ' . htmlspecialchars($utilisateur['prenom']) . ',</p>'
+                    . '<p>Vous avez demandé à réinitialiser votre mot de passe.</p>'
+                    . '<p>' . UrlHelper::ancre('/reinitialisation?token=' . urlencode($token), 'Choisir un nouveau mot de passe')
+                    . ' (lien valable 1 heure).</p>'
+                    . '<p>Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br>'
+                    . htmlspecialchars($lien) . '</p>'
+                    . '<p>Si vous n\'êtes pas à l\'origine de cette demande, ignorez simplement ce mail.</p>'
+                    . '<p>Julie et José</p>';
 
                 (new Mailer())->send(
                     $email,
                     "Réinitialisation de votre mot de passe - Vite & Gourmand",
-                    "Bonjour {$utilisateur['prenom']},\n\n"
-                    . "Vous avez demandé à réinitialiser votre mot de passe.\n"
-                    . "Cliquez sur ce lien (valable 1 heure) pour en choisir un nouveau :\n\n"
-                    . $lien . "\n\n"
-                    . "Si vous n'êtes pas à l'origine de cette demande, ignorez simplement ce mail.\n\n"
-                    . "Julie et José"
+                    $html,
+                    null,
+                    true
                 );
             }
 
@@ -262,6 +288,61 @@ class AuthController {
         }
 
         require __DIR__ . '/../Views/auth/reset_mdp.php';
+    }
+
+    /* =========================================
+       CONFIRMATION D'E-MAIL (inscription)
+       ========================================= */
+    public function confirmerEmail(): void {
+        $token = trim($_GET['token'] ?? '');
+        $utilisateur = $token !== '' ? $this->model->findByValidEmailToken($token) : null;
+
+        if (!$utilisateur) {
+            $_SESSION['flash_erreur'] = 'Ce lien de confirmation est invalide ou a expiré. Créez un nouveau compte ou contactez-nous.';
+            header('Location: ' . BASE_URL . '/login');
+            exit;
+        }
+
+        $this->model->confirmerEmail((int) $utilisateur['utilisateur_id']);
+
+        (new Mailer())->send(
+            $utilisateur['email'],
+            'Bienvenue chez Vite & Gourmand !',
+            '<p>Bonjour ' . htmlspecialchars($utilisateur['prenom']) . ',</p>'
+            . '<p>Votre adresse e-mail est confirmée : votre compte est maintenant actif.</p>'
+            . '<p>Vous pouvez ' . UrlHelper::ancre('/login', 'vous connecter')
+            . ' et découvrir ' . UrlHelper::ancre('/menus', 'nos menus') . '.</p>'
+            . '<p>À très bientôt,<br>Julie et José</p>',
+            null,
+            true
+        );
+
+        $_SESSION['flash_succes'] = 'Adresse e-mail confirmée ! Votre compte est actif, vous pouvez vous connecter.';
+        header('Location: ' . BASE_URL . '/login');
+        exit;
+    }
+
+    private function envoyerMailConfirmation(string $email, string $prenom, string $token): void {
+        $chemin = '/confirmation-email?token=' . urlencode($token);
+        $lien = UrlHelper::absolue($chemin);
+
+        $html = '<p>Bonjour ' . htmlspecialchars($prenom) . ',</p>'
+            . '<p>Merci de vous être inscrit chez Vite &amp; Gourmand.</p>'
+            . '<p>Pour activer votre compte, ' . UrlHelper::ancre($chemin, 'confirmez votre adresse e-mail')
+            . ' (lien valable 24 heures).</p>'
+            . '<p>Si le lien ne fonctionne pas, copiez cette adresse dans votre navigateur :<br>'
+            . htmlspecialchars($lien) . '</p>'
+            . '<p>Sans cette confirmation, vous ne pourrez pas vous connecter.<br>'
+            . 'Si vous n\'êtes pas à l\'origine de cette inscription, ignorez ce message.</p>'
+            . '<p>À bientôt,<br>Julie et José</p>';
+
+        (new Mailer())->send(
+            $email,
+            'Confirmez votre adresse e-mail — Vite & Gourmand',
+            $html,
+            null,
+            true
+        );
     }
 
     /* =========================================

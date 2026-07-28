@@ -1,18 +1,20 @@
 <?php
 ob_start();
+$gestionBase = $gestionBase ?? (BASE_URL . '/espace-employe');
+$gestionNavFile = $gestionNavFile ?? __DIR__ . '/_nav.php';
 $cm = $commandeModel;
 $total = (float) $commande['prix_menu'] + (float) $commande['prix_livraison'];
 $numeroEnc = urlencode($commande['numero_commande']);
-$clientNom = trim(($commande['client_prenom'] ?? '') . ' ' . ($commande['client_nom'] ?? ''));
+$clientNom = ViewHelper::formatNomComplet($commande['client_prenom'] ?? '', $commande['client_nom'] ?? '');
 ?>
 
 <section class="compte-hero employe-hero compte-hero-compact">
     <h1>Commande <?= htmlspecialchars($commande['numero_commande']) ?></h1>
-    <p><a href="<?= BASE_URL ?>/espace-employe/commandes" class="back-link-light">← Retour aux commandes</a></p>
+    <p><a href="<?= htmlspecialchars($gestionBase) ?>/commandes" class="back-link-light">← Retour aux commandes</a></p>
 </section>
 
 <section class="compte-page">
-    <?php require __DIR__ . '/_nav.php'; ?>
+    <?php require $gestionNavFile; ?>
 
     <div class="commande-detail-layout">
         <div class="compte-card">
@@ -44,11 +46,11 @@ $clientNom = trim(($commande['client_prenom'] ?? '') . ' ' . ($commande['client_
 
             <?php if (!empty($transitionsStatut)): ?>
                 <h3 class="employe-section-title">Changer le statut</h3>
-                <form method="post" action="<?= BASE_URL ?>/espace-employe/commande/<?= $numeroEnc ?>/statut" class="employe-statut-form">
+                <form method="post" action="<?= htmlspecialchars($gestionBase) ?>/commande/<?= $numeroEnc ?>/statut" class="employe-statut-form">
                     <?= Csrf::champ() ?>
                     <div class="champ">
                         <label for="statut">Nouveau statut</label>
-                        <select id="statut" name="statut" required>
+                        <select id="statut" name="statut" class="form-select" required>
                             <option value="">— Choisir —</option>
                             <?php foreach ($transitionsStatut as $s): ?>
                                 <option value="<?= htmlspecialchars($s) ?>"><?= htmlspecialchars($cm->libelleStatut($s)) ?></option>
@@ -64,7 +66,7 @@ $clientNom = trim(($commande['client_prenom'] ?? '') . ' ' . ($commande['client_
             <?php if (!empty($peutAnnulerEmploye)): ?>
                 <h3 class="employe-section-title">Annuler la commande</h3>
                 <p class="compte-info">L'annulation par l'employé nécessite un motif et la confirmation du mode de contact du client.</p>
-                <form method="post" action="<?= BASE_URL ?>/espace-employe/commande/<?= $numeroEnc ?>/annuler" class="employe-annulation-form" onsubmit="return confirm('Confirmer l\'annulation de cette commande ?');">
+                <form method="post" action="<?= htmlspecialchars($gestionBase) ?>/commande/<?= $numeroEnc ?>/annuler" class="employe-annulation-form" data-confirm="Confirmer l'annulation de cette commande ?">
                     <?= Csrf::champ() ?>
                     <div class="champ">
                         <label for="motif_annulation">Motif d'annulation *</label>
@@ -72,7 +74,7 @@ $clientNom = trim(($commande['client_prenom'] ?? '') . ' ' . ($commande['client_
                     </div>
                     <div class="champ">
                         <label for="mode_contact">Mode de contact du client *</label>
-                        <select id="mode_contact" name="mode_contact" required>
+                        <select id="mode_contact" name="mode_contact" class="form-select" required>
                             <option value="">— Choisir —</option>
                             <?php foreach ($modesContact as $cle => $libelle): ?>
                                 <option value="<?= htmlspecialchars($cle) ?>"><?= htmlspecialchars($libelle) ?></option>
@@ -94,7 +96,7 @@ $clientNom = trim(($commande['client_prenom'] ?? '') . ' ' . ($commande['client_
             <?php endif; ?>
 
             <h3 class="employe-section-title">Matériel prêté</h3>
-            <form method="post" action="<?= BASE_URL ?>/espace-employe/commande/<?= $numeroEnc ?>/materiel" class="employe-materiel-form">
+            <form method="post" action="<?= htmlspecialchars($gestionBase) ?>/commande/<?= $numeroEnc ?>/materiel" class="employe-materiel-form">
                 <?= Csrf::champ() ?>
                 <label class="checkbox-label">
                     <input type="checkbox" name="pret_materiel" value="1" <?= !empty($commande['pret_materiel']) ? 'checked' : '' ?>>

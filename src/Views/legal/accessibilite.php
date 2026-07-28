@@ -38,7 +38,7 @@ ob_start();
 
         <h2>Non-conformités connues</h2>
         <ul>
-            <li>Absence de photos réelles (visuels SVG de démonstration pour l&apos;instant)</li>
+            <li>Photos réelles pour les plats et les menus (galerie + cartes catalogue)</li>
             <li>Contraste des badges de statut : amélioration en cours sur certains combinaisons couleur/fond</li>
             <li>Documents PDF (manuel utilisateur, charte graphique) non publiés sur le site</li>
         </ul>
@@ -55,6 +55,7 @@ ob_start();
             vous pouvez nous contacter pour obtenir une assistance :
         </p>
         <ul>
+            <li>Téléphone : <a href="tel:+33615239439">06 15 23 94 39</a></li>
             <li>E-mail : <a href="mailto:vitegourmand322@gmail.com">vitegourmand322@gmail.com</a></li>
             <li>Formulaire : <a href="<?= BASE_URL ?>/contact">page Contact</a></li>
         </ul>

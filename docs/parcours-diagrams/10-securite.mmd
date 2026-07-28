@@ -1,0 +1,5 @@
+flowchart TD
+    P["Page protegee"] --> G{"AuthGuard"}
+    G -->|Non connecte| L["Redirection /login"]
+    G -->|Mauvais role| H["Accueil + message erreur"]
+    G -->|Acces autorise| P

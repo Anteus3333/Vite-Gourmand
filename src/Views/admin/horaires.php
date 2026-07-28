@@ -30,11 +30,19 @@ $gestionNavFile = $gestionNavFile ?? __DIR__ . '/_nav.php';
                         <div class="commande-row">
                             <div class="champ">
                                 <label for="ouverture-<?= (int) $h['horaire_id'] ?>">Ouverture</label>
-                                <input type="time" id="ouverture-<?= (int) $h['horaire_id'] ?>" name="heure_ouverture[]" value="<?= htmlspecialchars(substr($h['heure_ouverture'] ?? '11:00', 0, 5)) ?>" required>
+                                <?= ViewHelper::champHeure(
+                                    'ouverture-' . (int) $h['horaire_id'],
+                                    'heure_ouverture[]',
+                                    substr($h['heure_ouverture'] ?? '11:00', 0, 5)
+                                ) ?>
                             </div>
                             <div class="champ">
                                 <label for="fermeture-<?= (int) $h['horaire_id'] ?>">Fermeture</label>
-                                <input type="time" id="fermeture-<?= (int) $h['horaire_id'] ?>" name="heure_fermeture[]" value="<?= htmlspecialchars(substr($h['heure_fermeture'] ?? '23:00', 0, 5)) ?>" required>
+                                <?= ViewHelper::champHeure(
+                                    'fermeture-' . (int) $h['horaire_id'],
+                                    'heure_fermeture[]',
+                                    substr($h['heure_fermeture'] ?? '23:00', 0, 5)
+                                ) ?>
                             </div>
                         </div>
                     </fieldset>

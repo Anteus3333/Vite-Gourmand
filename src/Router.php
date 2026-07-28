@@ -46,6 +46,10 @@ class Router {
                 (new AuthController())->resetPassword();
                 break;
 
+            case 'confirmation-email':
+                (new AuthController())->confirmerEmail();
+                break;
+
             // --- Menus ---
             case 'menus':
                 (new MenuController())->list();
@@ -66,6 +70,8 @@ class Router {
                     (new MenuController())->filterAPI();
                 } elseif ($param === 'calcul-prix') {
                     (new CommandeController())->calculPrixAPI();
+                } elseif ($param === 'calcul-distance') {
+                    (new CommandeController())->calculDistanceAPI();
                 } else {
                     http_response_code(404);
                     echo "Erreur 404 : API non trouvée";
@@ -90,6 +96,10 @@ class Router {
                     $compte->commandes();
                 } elseif ($sousRoute === 'profil') {
                     $compte->profil();
+                } elseif ($sousRoute === 'changer-mot-de-passe') {
+                    $compte->changerMotDePasse();
+                } elseif ($sousRoute === 'supprimer-compte') {
+                    $compte->supprimerCompte();
                 } elseif ($sousRoute === 'avis') {
                     $compte->avis();
                 } elseif ($sousRoute === 'commande' && $numero !== '') {
@@ -148,6 +158,8 @@ class Router {
                             $employe->menuModifier($menuId);
                         } elseif ($menuAction === 'supprimer') {
                             $employe->menuSupprimer($menuId);
+                        } elseif ($menuAction === 'visibilite') {
+                            $employe->menuVisibilite($menuId);
                         } elseif ($menuAction === 'plats') {
                             $employe->menuPlats($menuId);
                         } else {
@@ -183,6 +195,24 @@ class Router {
 
                 if ($sousRoute === '' || $sousRoute === 'accueil') {
                     $admin->index();
+                } elseif ($sousRoute === 'stats' && $idOrSlug === 'sync-mongo') {
+                    $admin->statsSyncMongo();
+                } elseif ($sousRoute === 'commandes') {
+                    $admin->commandes();
+                } elseif ($sousRoute === 'avis') {
+                    if ($idOrSlug !== '' && is_numeric($idOrSlug)) {
+                        $avisId = (int) $idOrSlug;
+                        if ($action === 'valider') {
+                            $admin->avisValider($avisId);
+                        } elseif ($action === 'refuser') {
+                            $admin->avisRefuser($avisId);
+                        } else {
+                            http_response_code(404);
+                            echo 'Erreur 404 : Page introuvable';
+                        }
+                    } else {
+                        $admin->avis();
+                    }
                 } elseif ($sousRoute === 'menus') {
                     $admin->menus();
                 } elseif ($sousRoute === 'horaires') {
@@ -198,6 +228,10 @@ class Router {
                             $admin->employeDesactiver($employeId);
                         } elseif ($action === 'activer') {
                             $admin->employeActiver($employeId);
+                        } elseif ($action === 'modifier') {
+                            $admin->employeModifier($employeId);
+                        } elseif ($action === 'supprimer') {
+                            $admin->employeSupprimer($employeId);
                         } else {
                             http_response_code(404);
                             echo 'Erreur 404 : Page introuvable';
@@ -215,6 +249,8 @@ class Router {
                             $admin->menuModifier($menuId);
                         } elseif ($action === 'supprimer') {
                             $admin->menuSupprimer($menuId);
+                        } elseif ($action === 'visibilite') {
+                            $admin->menuVisibilite($menuId);
                         } elseif ($action === 'plats') {
                             $admin->menuPlats($menuId);
                         } else {
@@ -224,6 +260,16 @@ class Router {
                     } else {
                         http_response_code(404);
                         echo 'Erreur 404 : Page introuvable';
+                    }
+                } elseif ($sousRoute === 'commande' && $idOrSlug !== '') {
+                    if ($action === 'statut') {
+                        $admin->commandeStatut(urldecode($idOrSlug));
+                    } elseif ($action === 'annuler') {
+                        $admin->commandeAnnuler(urldecode($idOrSlug));
+                    } elseif ($action === 'materiel') {
+                        $admin->commandeMateriel(urldecode($idOrSlug));
+                    } else {
+                        $admin->commandeDetail(urldecode($idOrSlug));
                     }
                 } else {
                     http_response_code(404);
@@ -247,6 +293,10 @@ class Router {
 
             case 'accessibilite':
                 (new LegalController())->accessibilite();
+                break;
+
+            case 'politique-confidentialite':
+                (new LegalController())->politiqueConfidentialite();
                 break;
 
             default:

@@ -70,25 +70,35 @@ $menuActif = $menuSelectionne;
                             <small class="aide">Livraison à 5 € à Bordeaux, + 0,59 €/km hors Bordeaux</small>
                         </div>
                         <div class="champ" id="distance-group">
-                            <label for="distance_km">Distance (km)</label>
-                            <input type="number" id="distance_km" name="distance_km" min="0" step="0.1"
-                                   value="<?= htmlspecialchars($old['distance_km']) ?>"
-                                   placeholder="Ex : 15">
-                            <small class="aide">Obligatoire hors Bordeaux</small>
+                            <span class="distance-label" id="distance-label">Distance (km)</span>
+                            <p class="distance-valeur" id="distance-valeur" aria-labelledby="distance-label">
+                                <?= ($old['distance_km'] !== '' && $old['distance_km'] !== null)
+                                    ? htmlspecialchars(number_format((float) str_replace(',', '.', (string) $old['distance_km']), 1, ',', ' '))
+                                    : '—' ?>
+                            </p>
+                            <input type="hidden" id="distance_km" name="distance_km" value="<?= htmlspecialchars($old['distance_km']) ?>">
+                            <small class="aide" id="distance-aide">Calculée automatiquement depuis Bordeaux</small>
                         </div>
                     </div>
 
                     <div class="commande-row">
                         <div class="champ">
                             <label for="date_prestation">Date de prestation *</label>
-                            <input type="date" id="date_prestation" name="date_prestation"
-                                   value="<?= htmlspecialchars($old['date_prestation']) ?>"
-                                   min="<?= date('Y-m-d', strtotime('+1 day')) ?>" required>
+                            <?= ViewHelper::champDate(
+                                'date_prestation',
+                                'date_prestation',
+                                $old['date_prestation'] ?? '',
+                                true,
+                                date('Y-m-d', strtotime('+1 day'))
+                            ) ?>
                         </div>
                         <div class="champ">
                             <label for="heure_livraison">Heure de livraison *</label>
-                            <input type="time" id="heure_livraison" name="heure_livraison"
-                                   value="<?= htmlspecialchars($old['heure_livraison']) ?>" required>
+                            <?= ViewHelper::champHeure(
+                                'heure_livraison',
+                                'heure_livraison',
+                                $old['heure_livraison'] ?? ''
+                            ) ?>
                         </div>
                     </div>
                 </fieldset>
@@ -114,9 +124,11 @@ $menuActif = $menuSelectionne;
                         </select>
                     </div>
 
-                    <div class="champ">
+                    <div class="champ champ-nombre-personnes">
                         <label for="nombre_personne">Nombre de personnes *</label>
-                        <input type="number" id="nombre_personne" name="nombre_personne" min="1"
+                        <input type="number" id="nombre_personne" name="nombre_personne"
+                               class="quantity-input"
+                               min="<?= $menuActif ? (int) $menuActif['nombre_personne_minimun'] : 1 ?>"
                                value="<?= htmlspecialchars($old['nombre_personne']) ?>" required>
                         <small class="aide" id="minimum-hint"></small>
                     </div>
@@ -136,6 +148,12 @@ $menuActif = $menuSelectionne;
                     </label>
                 </div>
 
+                <?php if (!empty($erreurConditions)): ?>
+                    <div class="alert alert-erreur alert-conditions" role="alert" id="erreur-conditions">
+                        Vous devez accepter les conditions du menu sélectionné.
+                    </div>
+                <?php endif; ?>
+
                 <button type="submit" class="btn btn-submit">Valider ma commande</button>
             </form>
         </div>
@@ -154,7 +172,24 @@ $menuActif = $menuSelectionne;
     </div>
 </section>
 
-<script src="<?= BASE_URL ?>/js/commande.js"></script>
+<?php if (!empty($confirmationCommande)): ?>
+<div class="modal-overlay" id="modal-confirmation-commande" role="dialog" aria-modal="true" aria-labelledby="modal-confirmation-titre">
+    <div class="modal-box">
+        <h2 id="modal-confirmation-titre">Commande confirmée</h2>
+        <p><?= htmlspecialchars($confirmationCommande['message']) ?></p>
+        <p class="modal-hint">Vous pouvez retrouver le détail dans votre espace client.</p>
+        <a href="<?= BASE_URL ?>/" class="btn btn-submit modal-ok" id="modal-confirmation-ok">Ok</a>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.body.classList.add('modal-open');
+    document.getElementById('modal-confirmation-ok')?.focus();
+});
+</script>
+<?php endif; ?>
+
+<script src="<?= BASE_URL ?>/js/commande.js?v=<?= @filemtime(__DIR__ . '/../../public/js/commande.js') ?: time() ?>"></script>
 
 <?php
 $contenuPage = ob_get_clean();

@@ -1,0 +1,4 @@
+# Empêche l'exécution de scripts dans le dossier images plats
+<FilesMatch "\.(?i:php|phtml|phar|cgi|pl|py|asp|aspx)$">
+    Require all denied
+</FilesMatch>

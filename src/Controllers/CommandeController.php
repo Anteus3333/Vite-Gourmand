@@ -5,22 +5,26 @@ require_once __DIR__ . '/../Models/CommandeModel.php';
 require_once __DIR__ . '/../Models/MenuModel.php';
 require_once __DIR__ . '/../Models/UtilisateurModel.php';
 require_once __DIR__ . '/../Services/PrixCommandeService.php';
+require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/Mailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
+require_once __DIR__ . '/../Services/StatsMongoService.php';
 
 class CommandeController {
     private CommandeModel $commandeModel;
     private MenuModel $menuModel;
     private UtilisateurModel $userModel;
     private PrixCommandeService $prixService;
+    private DistanceService $distanceService;
     private array $config;
 
     public function __construct() {
-        $this->commandeModel = new CommandeModel();
-        $this->menuModel     = new MenuModel();
-        $this->userModel     = new UtilisateurModel();
-        $this->prixService   = new PrixCommandeService();
-        $this->config        = require __DIR__ . '/../../config/commande.php';
+        $this->commandeModel   = new CommandeModel();
+        $this->menuModel       = new MenuModel();
+        $this->userModel       = new UtilisateurModel();
+        $this->prixService     = new PrixCommandeService();
+        $this->distanceService = new DistanceService();
+        $this->config          = require __DIR__ . '/../../config/commande.php';
     }
 
     /** Affiche le formulaire et traite la soumission */
@@ -36,12 +40,22 @@ class CommandeController {
         }
 
         $utilisateur = $this->userModel->findById((int) $_SESSION['utilisateur']['id']);
-        $menus       = $this->menuModel->getAllMenus();
+        $menus       = $this->menuModel->getAllMenus(true);
         $titrePage   = 'Commander - Vite et Gourmand';
         $erreurs     = [];
+        $erreurConditions = false;
+        $confirmationCommande = null;
+        if (!empty($_SESSION['commande_confirmation'])) {
+            $confirmationCommande = $_SESSION['commande_confirmation'];
+            unset($_SESSION['commande_confirmation']);
+        }
 
         $menuIdPrefill = (int) ($_GET['menu_id'] ?? $_POST['menu_id'] ?? 0);
         $menuSelectionne = $menuIdPrefill ? $this->menuModel->getMenuById($menuIdPrefill) : null;
+        if ($menuSelectionne && (int) ($menuSelectionne['visible'] ?? 0) !== 1) {
+            $menuSelectionne = null;
+            $menuIdPrefill = 0;
+        }
         $nbPrefill = (int) ($_GET['nombre_personne'] ?? 0);
 
         $old = [
@@ -73,7 +87,7 @@ class CommandeController {
             }
 
             $menu = $this->menuModel->getMenuById((int) $old['menu_id']);
-            if (!$menu) {
+            if (!$menu || (int) ($menu['visible'] ?? 0) !== 1) {
                 $erreurs[] = 'Veuillez sélectionner un menu valide.';
             } elseif ((int) $menu['quantite_restante'] <= 0) {
                 $erreurs[] = 'Ce menu n\'est plus disponible.';
@@ -88,7 +102,7 @@ class CommandeController {
             if ($old['date_prestation'] === '')  $erreurs[] = 'La date de prestation est obligatoire.';
             if ($old['heure_livraison'] === '')  $erreurs[] = 'L\'heure de livraison est obligatoire.';
             if ($old['accepte_conditions'] !== '1') {
-                $erreurs[] = 'Vous devez accepter les conditions du menu sélectionné.';
+                $erreurConditions = true;
             }
 
             $nbPersonnes = (int) $old['nombre_personne'];
@@ -102,12 +116,20 @@ class CommandeController {
                 $erreurs[] = 'La date de prestation doit être ultérieure à aujourd\'hui.';
             }
 
-            $distanceKm = (float) str_replace(',', '.', $old['distance_km']);
-            if (!$this->prixService->estBordeaux($old['ville_livraison']) && $distanceKm <= 0) {
-                $erreurs[] = 'Indiquez la distance en km pour une livraison hors Bordeaux.';
+            $distanceKm = 0.0;
+            if (!$this->prixService->estBordeaux($old['ville_livraison'])) {
+                $autoKm = $this->distanceService->calculerKm($old['adresse_livraison'], $old['ville_livraison']);
+                if ($autoKm !== null && $autoKm > 0) {
+                    $distanceKm = $autoKm;
+                    $old['distance_km'] = (string) $autoKm;
+                } else {
+                    $erreurs[] = 'Impossible de calculer la distance automatiquement. Vérifiez l\'adresse et la ville de livraison.';
+                }
+            } else {
+                $old['distance_km'] = '';
             }
 
-            if (empty($erreurs) && $menu) {
+            if (empty($erreurs) && !$erreurConditions && $menu) {
                 $tarif = $this->prixService->calculer($menu, $nbPersonnes, $old['ville_livraison'], $distanceKm);
 
                 $numero = $this->commandeModel->creer([
@@ -123,10 +145,18 @@ class CommandeController {
                     'utilisateur_id'    => (int) $_SESSION['utilisateur']['id'],
                 ], (int) $menu['menu_id']);
 
+                $docStats = $this->commandeModel->getPourStatsMongo($numero);
+                if ($docStats) {
+                    (new StatsMongoService())->enregistrerCommande($docStats);
+                }
+
                 $this->envoyerMailConfirmation($old, $menu, $numero, $tarif);
 
-                $_SESSION['flash_succes'] = 'Votre commande ' . $numero . ' a bien été enregistrée. Un mail de confirmation vous a été envoyé.';
-                header('Location: ' . BASE_URL . '/');
+                $_SESSION['commande_confirmation'] = [
+                    'numero'  => $numero,
+                    'message' => 'Votre commande ' . $numero . ' a bien été enregistrée. Un e-mail de confirmation vous a été envoyé.',
+                ];
+                header('Location: ' . BASE_URL . '/commande');
                 exit;
             }
 
@@ -152,7 +182,7 @@ class CommandeController {
         header('Content-Type: application/json');
 
         $menu = $this->menuModel->getMenuById((int) ($_GET['menu_id'] ?? 0));
-        if (!$menu) {
+        if (!$menu || (int) ($menu['visible'] ?? 0) !== 1) {
             echo json_encode(['success' => false, 'message' => 'Menu introuvable']);
             exit;
         }
@@ -174,31 +204,74 @@ class CommandeController {
         exit;
     }
 
+    /** API JSON : distance routière depuis Bordeaux */
+    public function calculDistanceAPI(): void {
+        header('Content-Type: application/json');
+
+        $adresse = trim($_GET['adresse'] ?? '');
+        $ville   = trim($_GET['ville'] ?? '');
+
+        if ($ville === '') {
+            echo json_encode(['success' => false, 'message' => 'Ville obligatoire']);
+            exit;
+        }
+
+        if ($this->prixService->estBordeaux($ville)) {
+            echo json_encode(['success' => true, 'distance_km' => 0, 'auto' => true]);
+            exit;
+        }
+
+        $km = $this->distanceService->calculerKm($adresse, $ville);
+        if ($km === null) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Distance introuvable pour cette adresse. Saisissez-la manuellement.',
+            ]);
+            exit;
+        }
+
+        echo json_encode(['success' => true, 'distance_km' => $km, 'auto' => true]);
+        exit;
+    }
+
     private function estConnecte(): bool {
         return isset($_SESSION['utilisateur']['id']);
     }
 
     private function envoyerMailConfirmation(array $client, array $menu, string $numero, array $tarif): void {
         $reduction = $tarif['reduction_appliquee']
-            ? "\nRéduction (-10 %) : -" . number_format($tarif['reduction'], 2, ',', ' ') . " €"
+            ? '<li>Réduction (-10&nbsp;%) : −' . number_format($tarif['reduction'], 2, ',', ' ') . '&nbsp;€</li>'
             : '';
+        $cheminCommande = '/mon-compte/commande/' . rawurlencode($numero);
+
+        $html = '<p>Bonjour ' . htmlspecialchars($client['prenom']) . ',</p>'
+            . '<p>Nous avons bien reçu votre commande.</p>'
+            . '<ul>'
+            . '<li>Numéro : <strong>' . htmlspecialchars($numero) . '</strong></li>'
+            . '<li>Menu : ' . htmlspecialchars($menu['titre']) . '</li>'
+            . '<li>Date de prestation : ' . htmlspecialchars($client['date_prestation'])
+            . ' à ' . htmlspecialchars($client['heure_livraison']) . '</li>'
+            . '<li>Lieu : ' . htmlspecialchars($client['adresse_livraison']) . ', '
+            . htmlspecialchars($client['ville_livraison']) . '</li>'
+            . '<li>Nombre de personnes : ' . (int) $tarif['nombre_personne'] . '</li>'
+            . '</ul>'
+            . '<p><strong>Détail du prix</strong></p>'
+            . '<ul>'
+            . '<li>Menu : ' . number_format($tarif['prix_menu'], 2, ',', ' ') . '&nbsp;€</li>'
+            . $reduction
+            . '<li>Livraison : ' . number_format($tarif['prix_livraison'], 2, ',', ' ') . '&nbsp;€</li>'
+            . '<li><strong>TOTAL : ' . number_format($tarif['total'], 2, ',', ' ') . '&nbsp;€</strong></li>'
+            . '</ul>'
+            . '<p>Votre commande est en attente de validation par notre équipe.</p>'
+            . '<p>' . UrlHelper::ancre($cheminCommande, 'Voir ma commande') . '</p>'
+            . '<p>Julie et José — Vite &amp; Gourmand</p>';
 
         (new Mailer())->send(
             $client['email'],
             "Confirmation de commande {$numero} - Vite et Gourmand",
-            "Bonjour {$client['prenom']},\n\n"
-            . "Nous avons bien reçu votre commande.\n\n"
-            . "Numéro : {$numero}\n"
-            . "Menu : {$menu['titre']}\n"
-            . "Date de prestation : {$client['date_prestation']} à {$client['heure_livraison']}\n"
-            . "Lieu : {$client['adresse_livraison']}, {$client['ville_livraison']}\n"
-            . "Nombre de personnes : {$tarif['nombre_personne']}\n\n"
-            . "Détail du prix :\n"
-            . "- Menu : " . number_format($tarif['prix_menu'], 2, ',', ' ') . " €{$reduction}\n"
-            . "- Livraison : " . number_format($tarif['prix_livraison'], 2, ',', ' ') . " €\n"
-            . "- TOTAL : " . number_format($tarif['total'], 2, ',', ' ') . " €\n\n"
-            . "Votre commande est en attente de validation par notre équipe.\n\n"
-            . "Julie et José — Vite & Gourmand"
+            $html,
+            null,
+            true
         );
     }
 }

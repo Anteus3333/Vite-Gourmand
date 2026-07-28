@@ -6,6 +6,9 @@ return [
     'livraison_base'          => 5.00,
     'livraison_par_km'        => 0.59,
     'ville_livraison_gratuite'=> 'bordeaux',
+    // Point de départ pour le calcul auto de distance (centre de Bordeaux)
+    'bordeaux_lat'            => 44.8378,
+    'bordeaux_lon'            => -0.5792,
 
     // Réduction de 10 % si nb personnes >= minimum du menu + 5
     'reduction_seuil_personnes'=> 5,

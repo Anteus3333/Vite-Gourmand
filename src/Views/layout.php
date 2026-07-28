@@ -32,7 +32,6 @@
                     $roleNav = $_SESSION['utilisateur']['role'] ?? 'utilisateur';
                     if ($roleNav === 'administrateur'): ?>
                         <li><a href="<?= BASE_URL ?>/admin">Administration</a></li>
-                        <li><a href="<?= BASE_URL ?>/espace-employe">Espace employé</a></li>
                     <?php elseif ($roleNav === 'employe'): ?>
                         <li><a href="<?= BASE_URL ?>/espace-employe">Espace employé</a></li>
                     <?php else: ?>
@@ -54,11 +53,15 @@
 
     <main id="contenu-principal" tabindex="-1">
         <?php if (!empty($_SESSION['flash_succes'])): ?>
-            <div class="alert alert-succes flash" role="status" aria-live="polite"><?= htmlspecialchars($_SESSION['flash_succes']) ?></div>
+            <div class="flash-banner flash-banner-succes" role="status" aria-live="polite">
+                <p class="flash-banner-text"><?= htmlspecialchars($_SESSION['flash_succes']) ?></p>
+            </div>
             <?php unset($_SESSION['flash_succes']); ?>
         <?php endif; ?>
         <?php if (!empty($_SESSION['flash_erreur'])): ?>
-            <div class="alert alert-erreur flash" role="alert"><?= htmlspecialchars($_SESSION['flash_erreur']) ?></div>
+            <div class="flash-banner flash-banner-erreur" role="alert">
+                <p class="flash-banner-text"><?= htmlspecialchars($_SESSION['flash_erreur']) ?></p>
+            </div>
             <?php unset($_SESSION['flash_erreur']); ?>
         <?php endif; ?>
 
@@ -74,12 +77,17 @@
         ?>
         <div class="horaires">
             <h3>Nos Horaires</h3>
-            <p><?= htmlspecialchars($resumeHorairesFooter) ?></p>
+            <?php foreach ((array) $resumeHorairesFooter as $ligneHoraire): ?>
+                <p><?= htmlspecialchars($ligneHoraire) ?></p>
+            <?php endforeach; ?>
         </div>
         <div class="infos">
             <p>Traiteur événementiel depuis 25 ans à Bordeaux.</p>
+            <p>12 quai des Chartrons, 33000 Bordeaux</p>
             <nav class="footer-links" aria-label="Informations légales et accessibilité">
                 <a href="<?= BASE_URL ?>/mentions-legales">Mentions légales</a>
+                <span aria-hidden="true"> · </span>
+                <a href="<?= BASE_URL ?>/politique-confidentialite">Confidentialité</a>
                 <span aria-hidden="true"> · </span>
                 <a href="<?= BASE_URL ?>/cgv">Conditions générales de vente</a>
                 <span aria-hidden="true"> · </span>
@@ -90,5 +98,7 @@
 
     <?php $jsVersion = @filemtime(__DIR__ . '/../../public/js/main.js') ?: time(); ?>
     <script src="<?= BASE_URL ?>/js/main.js?v=<?= $jsVersion ?>"></script>
+    <?php $pickersVersion = @filemtime(__DIR__ . '/../../public/js/pickers.js') ?: time(); ?>
+    <script src="<?= BASE_URL ?>/js/pickers.js?v=<?= $pickersVersion ?>"></script>
 </body>
 </html>

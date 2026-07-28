@@ -12,17 +12,45 @@ ob_start();
 
     <div class="menu-detail-content">
         <?php if (!empty($images)): ?>
-            <div class="menu-gallery" aria-label="Galerie photos du menu">
-                <?php foreach ($images as $img): ?>
-                    <figure class="menu-gallery-item">
-                        <img src="<?= htmlspecialchars(AssetHelper::imageUrl($img['fichier'])) ?>"
-                             alt="<?= htmlspecialchars($img['legende'] ?? $menu['titre']) ?>"
-                             loading="lazy" width="800" height="500">
-                        <?php if (!empty($img['legende'])): ?>
-                            <figcaption><?= htmlspecialchars($img['legende']) ?></figcaption>
-                        <?php endif; ?>
-                    </figure>
-                <?php endforeach; ?>
+            <div class="menu-gallery" data-menu-gallery role="region" aria-roledescription="carrousel" aria-label="Galerie photos du menu">
+                <div class="menu-gallery-viewport">
+                    <ul class="menu-gallery-track">
+                        <?php foreach ($images as $index => $img): ?>
+                            <li class="menu-gallery-slide<?= $index === 0 ? ' is-active' : '' ?>"
+                                data-index="<?= (int) $index ?>"
+                                <?= $index === 0 ? '' : 'aria-hidden="true"' ?>>
+                                <figure>
+                                    <img src="<?= htmlspecialchars(AssetHelper::imageUrl($img['fichier'])) ?>"
+                                         alt="<?= htmlspecialchars($img['legende'] ?? $menu['titre']) ?>"
+                                         <?= $index === 0 ? '' : 'loading="lazy"' ?>
+                                         width="800" height="500">
+                                    <?php if (!empty($img['legende'])): ?>
+                                        <figcaption><?= htmlspecialchars($img['legende']) ?></figcaption>
+                                    <?php endif; ?>
+                                </figure>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+
+                <?php if (count($images) > 1): ?>
+                    <button type="button" class="menu-gallery-btn menu-gallery-prev" aria-label="Image précédente">
+                        <span aria-hidden="true">‹</span>
+                    </button>
+                    <button type="button" class="menu-gallery-btn menu-gallery-next" aria-label="Image suivante">
+                        <span aria-hidden="true">›</span>
+                    </button>
+                    <div class="menu-gallery-dots" role="tablist" aria-label="Choisir une image">
+                        <?php foreach ($images as $index => $img): ?>
+                            <button type="button"
+                                    class="menu-gallery-dot<?= $index === 0 ? ' is-active' : '' ?>"
+                                    role="tab"
+                                    aria-selected="<?= $index === 0 ? 'true' : 'false' ?>"
+                                    aria-label="Image <?= (int) ($index + 1) ?> sur <?= count($images) ?><?= !empty($img['legende']) ? ' : ' . htmlspecialchars($img['legende']) : '' ?>"
+                                    data-index="<?= (int) $index ?>"></button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
@@ -39,7 +67,7 @@ ob_start();
                     <ul class="plats-list plats-list-detail">
                         <?php foreach ($plats as $plat): ?>
                             <li class="plat-item">
-                                <img src="<?= htmlspecialchars(AssetHelper::imageUrl($plat['image'] ?? null, 'plats/plat-01.svg')) ?>"
+                                <img src="<?= htmlspecialchars(AssetHelper::imageUrl($plat['image'] ?? null, 'menus/default.svg')) ?>"
                                      alt="Photo illustrative : <?= htmlspecialchars($plat['titre_plat']) ?>"
                                      class="plat-thumb" loading="lazy" width="80" height="60">
                                 <div class="plat-item-body">
@@ -105,7 +133,7 @@ ob_start();
                            value="<?= htmlspecialchars($menu['nombre_personne_minimun']) ?>"
                            class="quantity-input">
                     <div class="total-price">
-                        <span class="label">Total estimé:</span>
+                        <span class="label">Total estimé</span>
                         <span class="value" id="total-price">
                             <?= number_format($menu['prix_par_personne'] * $menu['nombre_personne_minimun'], 2, ',', ' ') ?>€
                         </span>
@@ -166,7 +194,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const btnCommander = document.getElementById('btn-commander');
             if (btnCommander) {
                 btnCommander.dataset.navigate = '<?= BASE_URL ?>/commande?menu_id=<?= (int) $menu['menu_id'] ?>&nombre_personne=' + this.value;
-            }
             }
         });
     }

@@ -94,13 +94,21 @@ ob_start();
                 <span class="contact-icon" aria-hidden="true">📞</span>
                 <h3>Par téléphone</h3>
                 <p>Nous serons ravis d'échanger avec vous directement lors de nos horaires d'ouverture.</p>
-                <p class="contact-detail">Du lundi au dimanche<br>11h00 – 14h30 · 18h30 – 23h00</p>
+                <p class="contact-detail">
+                    <a href="tel:+33615239439">06 15 23 94 39</a><br>
+                    Du lundi au dimanche<br>
+                    11h00 – 14h30 · 18h30 – 23h00
+                </p>
             </div>
 
             <div class="contact-card">
                 <span class="contact-icon" aria-hidden="true">📍</span>
                 <h3>En personne</h3>
                 <p>Rencontrons-nous à Bordeaux pour discuter de votre événement et imaginer ensemble votre menu.</p>
+                <p class="contact-detail">
+                    12 quai des Chartrons<br>
+                    33000 Bordeaux
+                </p>
                 <p class="contact-detail">Traiteur événementiel depuis 25 ans à Bordeaux</p>
             </div>
         </aside>

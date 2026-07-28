@@ -6,7 +6,11 @@ require_once __DIR__ . '/../Models/UtilisateurModel.php';
 require_once __DIR__ . '/../Models/MenuModel.php';
 require_once __DIR__ . '/../Models/AvisModel.php';
 require_once __DIR__ . '/../Services/PrixCommandeService.php';
+require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/Csrf.php';
+require_once __DIR__ . '/../Services/Mailer.php';
+require_once __DIR__ . '/../Services/UrlHelper.php';
+require_once __DIR__ . '/../Services/StatsMongoService.php';
 
 class CompteController {
     private CommandeModel $commandeModel;
@@ -14,13 +18,15 @@ class CompteController {
     private MenuModel $menuModel;
     private AvisModel $avisModel;
     private PrixCommandeService $prixService;
+    private DistanceService $distanceService;
 
     public function __construct() {
-        $this->commandeModel = new CommandeModel();
-        $this->userModel     = new UtilisateurModel();
-        $this->menuModel     = new MenuModel();
-        $this->avisModel     = new AvisModel();
-        $this->prixService   = new PrixCommandeService();
+        $this->commandeModel   = new CommandeModel();
+        $this->userModel       = new UtilisateurModel();
+        $this->menuModel       = new MenuModel();
+        $this->avisModel       = new AvisModel();
+        $this->prixService     = new PrixCommandeService();
+        $this->distanceService = new DistanceService();
     }
 
     /** Tableau de bord : accueil espace utilisateur */
@@ -49,8 +55,7 @@ class CompteController {
         $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
 
         if (!$commande) {
-            http_response_code(404);
-            echo 'Commande introuvable';
+            $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
@@ -67,8 +72,7 @@ class CompteController {
         $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
 
         if (!$commande) {
-            http_response_code(404);
-            echo 'Commande introuvable';
+            $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
@@ -108,9 +112,17 @@ class CompteController {
                 $erreurs[] = 'La date de prestation doit être ultérieure à aujourd\'hui.';
             }
 
-            $distanceKm = (float) str_replace(',', '.', $old['distance_km']);
-            if (!$this->prixService->estBordeaux($old['ville_livraison']) && $distanceKm <= 0) {
-                $erreurs[] = 'Indiquez la distance en km pour une livraison hors Bordeaux.';
+            $distanceKm = 0.0;
+            if (!$this->prixService->estBordeaux($old['ville_livraison'])) {
+                $autoKm = $this->distanceService->calculerKm($old['adresse_livraison'], $old['ville_livraison']);
+                if ($autoKm !== null && $autoKm > 0) {
+                    $distanceKm = $autoKm;
+                    $old['distance_km'] = (string) $autoKm;
+                } else {
+                    $erreurs[] = 'Impossible de calculer la distance automatiquement. Vérifiez l\'adresse et la ville de livraison.';
+                }
+            } else {
+                $old['distance_km'] = '';
             }
 
             if (empty($erreurs)) {
@@ -152,8 +164,7 @@ class CompteController {
 
         $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
         if (!$commande) {
-            http_response_code(404);
-            echo 'Commande introuvable';
+            $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
@@ -164,6 +175,12 @@ class CompteController {
         }
 
         $this->commandeModel->annuler($numero, (int) $commande['menu_id']);
+
+        $docStats = $this->commandeModel->getPourStatsMongo($numero);
+        if ($docStats) {
+            (new StatsMongoService())->enregistrerCommande($docStats);
+        }
+
         $_SESSION['flash_succes'] = 'Votre commande a bien été annulée.';
         header('Location: ' . BASE_URL . '/mon-compte/commandes');
         exit;
@@ -180,12 +197,12 @@ class CompteController {
             'email'           => $utilisateur['email'] ?? '',
             'telephone'       => $utilisateur['telephone'] ?? '',
             'adresse_postale' => $utilisateur['adresse_postale'] ?? '',
+            'code_postal'     => $utilisateur['code_postal'] ?? '',
             'ville'           => $utilisateur['ville'] ?? '',
-            'pays'            => $utilisateur['pays'] ?? 'France',
         ];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            foreach (['nom', 'prenom', 'telephone', 'adresse_postale', 'ville', 'pays'] as $champ) {
+            foreach (['nom', 'prenom', 'telephone', 'adresse_postale', 'code_postal', 'ville'] as $champ) {
                 $old[$champ] = trim($_POST[$champ] ?? '');
             }
 
@@ -196,6 +213,12 @@ class CompteController {
             if ($old['prenom'] === '')    $erreurs[] = 'Le prénom est obligatoire.';
             if ($old['telephone'] === '') $erreurs[] = 'Le téléphone est obligatoire.';
             if ($old['adresse_postale'] === '') $erreurs[] = 'L\'adresse est obligatoire.';
+            if ($old['code_postal'] === '') {
+                $erreurs[] = 'Le code postal est obligatoire.';
+            } elseif (!preg_match('/^\d{5}$/', $old['code_postal'])) {
+                $erreurs[] = 'Le code postal doit contenir 5 chiffres.';
+            }
+            if ($old['ville'] === '') $erreurs[] = 'La ville est obligatoire.';
 
             if (empty($erreurs)) {
                 $this->userModel->updateProfil($this->userId(), $old);
@@ -207,7 +230,106 @@ class CompteController {
         }
 
         $titrePage = 'Mon profil - Vite et Gourmand';
+        $erreursMdp = $_SESSION['erreurs_mdp'] ?? [];
+        unset($_SESSION['erreurs_mdp']);
         require __DIR__ . '/../Views/compte/profil.php';
+    }
+
+    /** Changement de mot de passe depuis Mon profil */
+    public function changerMotDePasse(): void {
+        $this->exigerConnexion();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . BASE_URL . '/mon-compte/profil');
+            exit;
+        }
+
+        $utilisateur = $this->userModel->findById($this->userId());
+        $erreursMdp = [];
+
+        $actuel       = $_POST['password_actuel'] ?? '';
+        $nouveau      = $_POST['password_nouveau'] ?? '';
+        $confirmation = $_POST['password_confirmation_nouveau'] ?? '';
+
+        if (!Csrf::verifier()) {
+            $erreursMdp[] = 'Votre session a expiré, merci de soumettre à nouveau le formulaire.';
+        } elseif (!password_verify($actuel, $utilisateur['password'] ?? '')) {
+            $erreursMdp[] = 'Le mot de passe actuel est incorrect.';
+        } else {
+            $erreursMdp = array_merge($erreursMdp, $this->validerMotDePasse($nouveau));
+            if ($nouveau !== $confirmation) {
+                $erreursMdp[] = 'La confirmation ne correspond pas au nouveau mot de passe.';
+            }
+            if ($actuel !== '' && $nouveau === $actuel) {
+                $erreursMdp[] = 'Le nouveau mot de passe doit être différent de l\'actuel.';
+            }
+        }
+
+        if (!empty($erreursMdp)) {
+            $_SESSION['erreurs_mdp'] = $erreursMdp;
+            header('Location: ' . BASE_URL . '/mon-compte/profil#modifier-mot-de-passe');
+            exit;
+        }
+
+        $this->userModel->updatePassword($this->userId(), $nouveau);
+        $mailOk = $this->envoyerMailMotDePasseModifie($utilisateur);
+        $_SESSION['flash_succes'] = $mailOk
+            ? 'Votre mot de passe a bien été modifié. Un e-mail de confirmation vous a été envoyé.'
+            : 'Votre mot de passe a bien été modifié, mais l\'e-mail de confirmation n\'a pas pu être envoyé. Vérifiez vos spams ou contactez-nous.';
+        header('Location: ' . BASE_URL . '/mon-compte/profil');
+        exit;
+    }
+
+    /** Suppression définitive du compte client (RGPD) */
+    public function supprimerCompte(): void {
+        $this->exigerConnexion();
+
+        $role = $_SESSION['utilisateur']['role'] ?? 'utilisateur';
+        if ($role !== 'utilisateur') {
+            $_SESSION['flash_erreur'] = 'La suppression en ligne est réservée aux comptes clients.';
+            header('Location: ' . BASE_URL . '/mon-compte/profil');
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . BASE_URL . '/mon-compte/profil');
+            exit;
+        }
+
+        if (!Csrf::verifier()) {
+            $_SESSION['flash_erreur'] = 'Votre session a expiré, merci de réessayer.';
+            header('Location: ' . BASE_URL . '/mon-compte/profil');
+            exit;
+        }
+
+        $password = $_POST['password_confirmation'] ?? '';
+        $confirm  = isset($_POST['confirm_suppression']);
+
+        if (!$confirm) {
+            $_SESSION['flash_erreur'] = 'Veuillez cocher la case de confirmation pour supprimer votre compte.';
+            header('Location: ' . BASE_URL . '/mon-compte/profil');
+            exit;
+        }
+
+        $utilisateur = $this->userModel->findById($this->userId());
+        if (!$utilisateur || !password_verify($password, $utilisateur['password'] ?? '')) {
+            $_SESSION['flash_erreur'] = 'Mot de passe incorrect. Le compte n\'a pas été supprimé.';
+            header('Location: ' . BASE_URL . '/mon-compte/profil');
+            exit;
+        }
+
+        if (!$this->userModel->supprimerCompteClient($this->userId())) {
+            $_SESSION['flash_erreur'] = 'La suppression du compte a échoué. Contactez-nous si le problème persiste.';
+            header('Location: ' . BASE_URL . '/mon-compte/profil');
+            exit;
+        }
+
+        $_SESSION = [];
+        session_destroy();
+        session_start();
+        $_SESSION['flash_succes'] = 'Votre compte a bien été supprimé. Toutes vos données personnelles ont été effacées.';
+        header('Location: ' . BASE_URL . '/login');
+        exit;
     }
 
     /** Liste des avis déposés + commandes éligibles */
@@ -232,8 +354,7 @@ class CompteController {
         $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
 
         if (!$commande) {
-            http_response_code(404);
-            echo 'Commande introuvable';
+            $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
@@ -293,8 +414,68 @@ class CompteController {
     private function exigerConnexion(): void {
         if (!isset($_SESSION['utilisateur']['id'])) {
             $_SESSION['flash_erreur'] = 'Connectez-vous pour accéder à votre espace.';
-            header('Location: ' . BASE_URL . '/login?redirect=' . urlencode('/mon-compte'));
+            $cible = $_SERVER['REQUEST_URI'] ?? (BASE_URL . '/mon-compte');
+            $base = BASE_URL;
+            if ($base !== '' && str_starts_with($cible, $base)) {
+                $cible = substr($cible, strlen($base)) ?: '/';
+            }
+            if ($cible === '' || !str_starts_with($cible, '/')) {
+                $cible = '/mon-compte';
+            }
+            header('Location: ' . BASE_URL . '/login?redirect=' . urlencode($cible));
             exit;
         }
+    }
+
+    /** Réponse 404 commande : message plus clair si mauvaise session */
+    private function repondreCommandeIntrouvable(string $numero): void {
+        http_response_code(404);
+        $existe = $this->commandeModel->getByNumero($numero) !== null;
+        if ($existe) {
+            echo 'Cette commande n\'est pas associée à votre compte. '
+                . 'Connectez-vous avec le compte utilisé pour passer la commande.';
+            return;
+        }
+        echo 'Commande introuvable';
+    }
+
+    private function validerMotDePasse(string $password): array {
+        $erreurs = [];
+        if (strlen($password) < 10)                  $erreurs[] = 'Le mot de passe doit contenir au moins 10 caractères.';
+        if (!preg_match('/[A-Z]/', $password))       $erreurs[] = 'Le mot de passe doit contenir au moins une majuscule.';
+        if (!preg_match('/[a-z]/', $password))       $erreurs[] = 'Le mot de passe doit contenir au moins une minuscule.';
+        if (!preg_match('/[0-9]/', $password))       $erreurs[] = 'Le mot de passe doit contenir au moins un chiffre.';
+        if (!preg_match('/[^a-zA-Z0-9]/', $password)) $erreurs[] = 'Le mot de passe doit contenir au moins un caractère spécial.';
+        return $erreurs;
+    }
+
+    private function envoyerMailMotDePasseModifie(array $utilisateur): bool {
+        $email = trim($utilisateur['email'] ?? '');
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $prenom = trim($utilisateur['prenom'] ?? '');
+        $date   = date('d/m/Y à H:i');
+        $salut = $prenom !== '' ? htmlspecialchars($prenom) : '';
+
+        $html = '<p>Bonjour' . ($salut !== '' ? ' ' . $salut : '') . ',</p>'
+            . '<p>Nous vous confirmons que le mot de passe de votre compte Vite et Gourmand '
+            . 'a été modifié le ' . htmlspecialchars($date) . '.</p>'
+            . '<p>Si vous êtes à l\'origine de cette modification, aucune action n\'est nécessaire.</p>'
+            . '<p>Si vous n\'êtes pas à l\'origine de ce changement, sécurisez immédiatement votre compte :</p>'
+            . '<ul>'
+            . '<li>' . UrlHelper::ancre('/mot-de-passe-oublie', 'Réinitialiser votre mot de passe') . '</li>'
+            . '<li>' . UrlHelper::ancre('/contact', 'Nous contacter') . '</li>'
+            . '</ul>'
+            . '<p>L\'équipe Vite et Gourmand</p>';
+
+        return (new Mailer())->send(
+            $email,
+            'Modification de votre mot de passe — Vite et Gourmand',
+            $html,
+            null,
+            true
+        );
     }
 }

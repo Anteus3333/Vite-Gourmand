@@ -17,4 +17,9 @@ class LegalController {
         $titrePage = 'Accessibilité - Vite et Gourmand';
         require __DIR__ . '/../Views/legal/accessibilite.php';
     }
+
+    public function politiqueConfidentialite(): void {
+        $titrePage = 'Politique de confidentialité - Vite et Gourmand';
+        require __DIR__ . '/../Views/legal/politique-confidentialite.php';
+    }
 }

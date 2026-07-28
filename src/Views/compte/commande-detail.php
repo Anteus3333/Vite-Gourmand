@@ -41,7 +41,7 @@ $numeroEnc  = urlencode($commande['numero_commande']);
                         <?= ViewHelper::btnNav(BASE_URL . '/mon-compte/commande/' . $numeroEnc . '/modifier', 'Modifier') ?>
                     <?php endif; ?>
                     <?php if ($annulable): ?>
-                        <form method="post" action="<?= BASE_URL ?>/mon-compte/commande/<?= $numeroEnc ?>/annuler" class="inline-form" onsubmit="return confirm('Confirmer l\'annulation de cette commande ?');">
+                        <form method="post" action="<?= BASE_URL ?>/mon-compte/commande/<?= $numeroEnc ?>/annuler" class="inline-form" data-confirm="Confirmer l'annulation de cette commande ?">
                             <?= Csrf::champ() ?>
                             <button type="submit" class="btn btn-outline btn-danger">Annuler la commande</button>
                         </form>

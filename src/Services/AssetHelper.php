@@ -10,7 +10,8 @@ class AssetHelper {
     public static function imageUrl(?string $cheminRelatif, string $defaut = 'menus/default.svg'): string {
         $rel = trim($cheminRelatif ?? '');
         if ($rel !== '' && is_file(self::cheminAbsolu($rel))) {
-            return BASE_URL . '/images/' . $rel;
+            $parts = array_map('rawurlencode', explode('/', str_replace('\\', '/', $rel)));
+            return BASE_URL . '/images/' . implode('/', $parts);
         }
         return BASE_URL . '/images/' . ltrim($defaut, '/');
     }

@@ -33,15 +33,24 @@ $cm = $commandeModel;
 
             <fieldset class="avis-note-fieldset">
                 <legend>Note *</legend>
-                <div class="avis-notes">
-                    <?php for ($i = 5; $i >= 1; $i--): ?>
-                        <label class="avis-note-label">
-                            <input type="radio" name="note" value="<?= $i ?>" required
-                                <?= ($old['note'] ?? '') === (string) $i ? 'checked' : '' ?>>
-                            <span><?= $i ?>/5</span>
+                <div class="star-rating" role="radiogroup" aria-label="Note sur 5">
+                    <?php
+                    $noteActuelle = (string) ($old['note'] ?? '');
+                    for ($i = 5; $i >= 1; $i--):
+                    ?>
+                        <input type="radio"
+                               id="note-<?= $i ?>"
+                               name="note"
+                               value="<?= $i ?>"
+                               required
+                               <?= $noteActuelle === (string) $i ? 'checked' : '' ?>>
+                        <label for="note-<?= $i ?>" title="<?= $i ?> sur 5">
+                            <span class="sr-only"><?= $i ?> sur 5</span>
+                            <span class="star-icon" aria-hidden="true">★</span>
                         </label>
                     <?php endfor; ?>
                 </div>
+                <p class="aide star-rating-hint">Cliquez sur une étoile pour noter (1 = mauvais, 5 = excellent)</p>
             </fieldset>
 
             <div class="champ">

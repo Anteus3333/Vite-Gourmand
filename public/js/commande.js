@@ -1,4 +1,4 @@
-// public/js/commande.js — calcul dynamique du prix (ECF, sans rechargement)
+// public/js/commande.js — calcul dynamique du prix + distance auto (ECF)
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('commande-form');
     if (!form) return;
@@ -6,24 +6,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.querySelector('.commande-page');
     const siteBase = page?.dataset.baseUrl || form.action.replace(/\/commande$/, '');
 
-    const menuSelect   = document.getElementById('menu_id');
-    const nbInput      = document.getElementById('nombre_personne');
-    const villeInput   = document.getElementById('ville_livraison');
-    const distanceInput= document.getElementById('distance_km');
-    const distanceGroup= document.getElementById('distance-group');
-    const recapContent = document.getElementById('recap-content');
-    const conditionsBox= document.getElementById('conditions-box');
+    const menuSelect    = document.getElementById('menu_id');
+    const nbInput       = document.getElementById('nombre_personne');
+    const adresseInput  = document.getElementById('adresse_livraison');
+    const villeInput    = document.getElementById('ville_livraison');
+    const distanceInput = document.getElementById('distance_km');
+    const distanceValeur = document.getElementById('distance-valeur');
+    const distanceGroup = document.getElementById('distance-group');
+    const distanceAide  = document.getElementById('distance-aide');
+    const recapContent  = document.getElementById('recap-content');
+    const conditionsBox = document.getElementById('conditions-box');
     const conditionsText= document.getElementById('conditions-text');
-    const minimumHint  = document.getElementById('minimum-hint');
+    const minimumHint   = document.getElementById('minimum-hint');
+
+    let distanceTimer = null;
 
     function estBordeaux(ville) {
         return ville.trim().toLowerCase() === 'bordeaux';
     }
 
+    function setDistanceAide(texte) {
+        if (distanceAide) distanceAide.textContent = texte;
+    }
+
+    function afficherDistance(km) {
+        if (km === '' || km === null || km === undefined || km === 0 || km === '0') {
+            distanceInput.value = '';
+            if (distanceValeur) distanceValeur.textContent = '—';
+            return;
+        }
+        const n = parseFloat(String(km).replace(',', '.'));
+        if (Number.isNaN(n)) {
+            distanceInput.value = '';
+            if (distanceValeur) distanceValeur.textContent = '—';
+            return;
+        }
+        distanceInput.value = n;
+        if (distanceValeur) {
+            distanceValeur.textContent = n.toFixed(1).replace('.', ',');
+        }
+    }
+
     function toggleDistance() {
         const horsBdx = !estBordeaux(villeInput.value);
         distanceGroup.style.display = horsBdx ? '' : 'none';
-        if (!horsBdx) distanceInput.value = '';
+        if (!horsBdx) {
+            afficherDistance('');
+            setDistanceAide('Calculée automatiquement depuis Bordeaux');
+        }
     }
 
     function updateConditions() {
@@ -37,8 +67,16 @@ document.addEventListener('DOMContentLoaded', () => {
         conditionsText.textContent = opt.dataset.desc || '';
         conditionsBox.hidden = false;
         minimumHint.textContent = 'Minimum : ' + min + ' personne(s). Réduction -10 % à partir de ' + (min + 5) + ' personnes.';
-        if (parseInt(nbInput.value, 10) < min) nbInput.value = min;
         nbInput.min = min;
+        appliquerMinimumPersonnes();
+    }
+
+    function appliquerMinimumPersonnes() {
+        const min = parseInt(nbInput.min, 10) || 1;
+        const val = parseInt(nbInput.value, 10) || 0;
+        if (val < min) {
+            nbInput.value = min;
+        }
     }
 
     function formatEuro(n) {
@@ -90,12 +128,125 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error('Erreur calcul prix:', err));
     }
 
+    function calculerDistanceAuto() {
+        if (estBordeaux(villeInput.value)) {
+            toggleDistance();
+            recalculerPrix();
+            return;
+        }
+
+        toggleDistance();
+        const ville = villeInput.value.trim();
+        if (ville === '') {
+            recalculerPrix();
+            return;
+        }
+
+        clearTimeout(distanceTimer);
+        setDistanceAide('Calcul de la distance…');
+        distanceTimer = setTimeout(() => {
+            const params = new URLSearchParams({
+                adresse: adresseInput?.value || '',
+                ville: ville,
+            });
+
+            fetch(siteBase + '/api/calcul-distance?' + params.toString())
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        afficherDistance(data.distance_km);
+                        setDistanceAide('Calculée automatiquement depuis Bordeaux');
+                    } else {
+                        afficherDistance('');
+                        setDistanceAide(data.message || 'Distance introuvable pour cette adresse.');
+                    }
+                    recalculerPrix();
+                })
+                .catch(() => {
+                    afficherDistance('');
+                    setDistanceAide('Calcul impossible pour le moment.');
+                    recalculerPrix();
+                });
+        }, 700);
+    }
+
     menuSelect.addEventListener('change', () => { updateConditions(); recalculerPrix(); });
-    nbInput.addEventListener('input', recalculerPrix);
-    villeInput.addEventListener('input', () => { toggleDistance(); recalculerPrix(); });
-    distanceInput.addEventListener('input', recalculerPrix);
+    nbInput.addEventListener('input', () => {
+        appliquerMinimumPersonnes();
+        recalculerPrix();
+    });
+    nbInput.addEventListener('change', () => {
+        appliquerMinimumPersonnes();
+        recalculerPrix();
+    });
+    adresseInput?.addEventListener('change', calculerDistanceAuto);
+    adresseInput?.addEventListener('blur', calculerDistanceAuto);
+    villeInput.addEventListener('change', calculerDistanceAuto);
+    villeInput.addEventListener('blur', calculerDistanceAuto);
+    villeInput.addEventListener('input', () => {
+        toggleDistance();
+        calculerDistanceAuto();
+    });
 
     updateConditions();
     toggleDistance();
-    if (menuSelect.value) recalculerPrix();
+    if (distanceInput.value) {
+        afficherDistance(distanceInput.value);
+    }
+    if (!estBordeaux(villeInput.value) && villeInput.value.trim() !== '') {
+        calculerDistanceAuto();
+    } else if (menuSelect.value) {
+        recalculerPrix();
+    }
+
+    const erreurConditions = document.getElementById('erreur-conditions');
+    if (erreurConditions) {
+        erreurConditions.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Anti double-clic : griser le bouton dès la 1re soumission valide
+    const submitBtn = form.querySelector('button[type="submit"]');
+    let soumissionEnCours = false;
+
+    function verrouillerSoumission(label) {
+        soumissionEnCours = true;
+        if (!submitBtn) return;
+        submitBtn.disabled = true;
+        submitBtn.classList.add('is-submitting');
+        submitBtn.setAttribute('aria-busy', 'true');
+        if (!submitBtn.dataset.labelOrigine) {
+            submitBtn.dataset.labelOrigine = submitBtn.textContent;
+        }
+        submitBtn.textContent = label || 'Validation en cours…';
+    }
+
+    function champsPersonnalisesOk() {
+        const dateReq = form.querySelector('[data-date-value][required]');
+        if (dateReq && !dateReq.value) return false;
+        const timePicker = form.querySelector('[data-time-picker][data-required="1"]');
+        if (timePicker) {
+            const timeVal = timePicker.querySelector('[data-time-value]');
+            if (timeVal && !timeVal.value) return false;
+        }
+        return true;
+    }
+
+    form.addEventListener('submit', (e) => {
+        if (soumissionEnCours) {
+            e.preventDefault();
+            return;
+        }
+        if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+            return;
+        }
+        if (!champsPersonnalisesOk()) {
+            return;
+        }
+        verrouillerSoumission();
+    });
+
+    // Après succès : modale affichée — garder le bouton verrouillé jusqu'au Ok
+    if (document.getElementById('modal-confirmation-commande')) {
+        verrouillerSoumission('Commande enregistrée');
+    }
 });

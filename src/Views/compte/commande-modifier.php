@@ -35,25 +35,44 @@ $numeroEnc = urlencode($commande['numero_commande']);
                         <input type="text" id="ville_livraison" name="ville_livraison" value="<?= htmlspecialchars($old['ville_livraison']) ?>" required>
                     </div>
                     <div class="champ" id="distance-group">
-                        <label for="distance_km">Distance (km)</label>
-                        <input type="number" id="distance_km" name="distance_km" min="0" step="0.1" value="<?= htmlspecialchars($old['distance_km']) ?>">
+                        <span class="distance-label" id="distance-label-modif">Distance (km)</span>
+                        <p class="distance-valeur" id="distance-valeur" aria-labelledby="distance-label-modif">
+                            <?= ($old['distance_km'] !== '' && $old['distance_km'] !== null)
+                                ? htmlspecialchars(number_format((float) str_replace(',', '.', (string) $old['distance_km']), 1, ',', ' '))
+                                : '—' ?>
+                        </p>
+                        <input type="hidden" id="distance_km" name="distance_km" value="<?= htmlspecialchars($old['distance_km']) ?>">
+                        <small class="aide">Calculée automatiquement depuis Bordeaux</small>
                     </div>
                 </div>
 
                 <div class="commande-row">
                     <div class="champ">
                         <label for="date_prestation">Date de prestation *</label>
-                        <input type="date" id="date_prestation" name="date_prestation" value="<?= htmlspecialchars($old['date_prestation']) ?>" min="<?= date('Y-m-d', strtotime('+1 day')) ?>" required>
+                        <?= ViewHelper::champDate(
+                            'date_prestation',
+                            'date_prestation',
+                            $old['date_prestation'] ?? '',
+                            true,
+                            date('Y-m-d', strtotime('+1 day'))
+                        ) ?>
                     </div>
                     <div class="champ">
                         <label for="heure_livraison">Heure *</label>
-                        <input type="time" id="heure_livraison" name="heure_livraison" value="<?= htmlspecialchars($old['heure_livraison']) ?>" required>
+                        <?= ViewHelper::champHeure(
+                            'heure_livraison',
+                            'heure_livraison',
+                            $old['heure_livraison'] ?? ''
+                        ) ?>
                     </div>
                 </div>
 
-                <div class="champ">
+                <div class="champ champ-nombre-personnes">
                     <label for="nombre_personne">Nombre de personnes *</label>
-                    <input type="number" id="nombre_personne" name="nombre_personne" min="<?= (int) $menu['nombre_personne_minimun'] ?>" value="<?= htmlspecialchars($old['nombre_personne']) ?>" required>
+                    <input type="number" id="nombre_personne" name="nombre_personne"
+                           class="quantity-input"
+                           min="<?= (int) $menu['nombre_personne_minimun'] ?>"
+                           value="<?= htmlspecialchars($old['nombre_personne']) ?>" required>
                     <small class="aide">Minimum : <?= (int) $menu['nombre_personne_minimun'] ?> · Réduction -10 % à partir de <?= (int) $menu['nombre_personne_minimun'] + 5 ?> pers.</small>
                 </div>
 
@@ -72,7 +91,7 @@ $numeroEnc = urlencode($commande['numero_commande']);
     </div>
 </section>
 
-<script src="<?= BASE_URL ?>/js/commande-modif.js"></script>
+<script src="<?= BASE_URL ?>/js/commande-modif.js?v=<?= @filemtime(__DIR__ . '/../../public/js/commande-modif.js') ?: time() ?>"></script>
 
 <?php
 $contenuPage = ob_get_clean();

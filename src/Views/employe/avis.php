@@ -1,5 +1,7 @@
 <?php
 ob_start();
+$gestionBase = $gestionBase ?? (BASE_URL . '/espace-employe');
+$gestionNavFile = $gestionNavFile ?? __DIR__ . '/_nav.php';
 
 $labelsAvis = [
     'en_attente' => 'En attente',
@@ -14,15 +16,15 @@ $labelsAvis = [
 </section>
 
 <section class="compte-page">
-    <?php require __DIR__ . '/_nav.php'; ?>
+    <?php require $gestionNavFile; ?>
 
     <div class="employe-filtres" role="navigation" aria-label="Filtrer les avis">
-        <a href="<?= BASE_URL ?>/espace-employe/avis?statut=en_attente" class="<?= ($filtreActif ?? '') === 'en_attente' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars($gestionBase) ?>/avis?statut=en_attente" class="<?= ($filtreActif ?? '') === 'en_attente' ? 'active' : '' ?>">
             En attente (<?= (int) $nbAttente ?>)
         </a>
-        <a href="<?= BASE_URL ?>/espace-employe/avis?statut=valide" class="<?= ($filtreActif ?? '') === 'valide' ? 'active' : '' ?>">Publiés</a>
-        <a href="<?= BASE_URL ?>/espace-employe/avis?statut=refuse" class="<?= ($filtreActif ?? '') === 'refuse' ? 'active' : '' ?>">Refusés</a>
-        <a href="<?= BASE_URL ?>/espace-employe/avis?statut=tous" class="<?= ($filtreActif ?? '') === 'tous' ? 'active' : '' ?>">Tous</a>
+        <a href="<?= htmlspecialchars($gestionBase) ?>/avis?statut=valide" class="<?= ($filtreActif ?? '') === 'valide' ? 'active' : '' ?>">Publiés</a>
+        <a href="<?= htmlspecialchars($gestionBase) ?>/avis?statut=refuse" class="<?= ($filtreActif ?? '') === 'refuse' ? 'active' : '' ?>">Refusés</a>
+        <a href="<?= htmlspecialchars($gestionBase) ?>/avis?statut=tous" class="<?= ($filtreActif ?? '') === 'tous' ? 'active' : '' ?>">Tous</a>
     </div>
 
     <?php if (empty($avis)): ?>
@@ -35,7 +37,7 @@ $labelsAvis = [
                 <article class="compte-card employe-avis-card">
                     <div class="employe-avis-head">
                         <div>
-                            <strong><?= htmlspecialchars(trim(($a['prenom'] ?? '') . ' ' . ($a['nom'] ?? ''))) ?></strong>
+                            <strong><?= htmlspecialchars(ViewHelper::formatNomComplet($a['prenom'] ?? '', $a['nom'] ?? '')) ?></strong>
                             <span class="employe-avis-note"><?= htmlspecialchars($a['note']) ?>/5</span>
                         </div>
                         <span class="statut-badge statut-<?= htmlspecialchars($a['statut']) ?>">
@@ -52,11 +54,11 @@ $labelsAvis = [
 
                     <?php if (($a['statut'] ?? '') === 'en_attente'): ?>
                         <div class="detail-actions">
-                            <form method="post" action="<?= BASE_URL ?>/espace-employe/avis/<?= (int) $a['avis_id'] ?>/valider" class="inline-form">
+                            <form method="post" action="<?= htmlspecialchars($gestionBase) ?>/avis/<?= (int) $a['avis_id'] ?>/valider" class="inline-form">
                                 <?= Csrf::champ() ?>
                                 <button type="submit" class="btn btn-sm">Publier</button>
                             </form>
-                            <form method="post" action="<?= BASE_URL ?>/espace-employe/avis/<?= (int) $a['avis_id'] ?>/refuser" class="inline-form" onsubmit="return confirm('Refuser cet avis ?');">
+                            <form method="post" action="<?= htmlspecialchars($gestionBase) ?>/avis/<?= (int) $a['avis_id'] ?>/refuser" class="inline-form" data-confirm="Refuser cet avis ?">
                                 <?= Csrf::champ() ?>
                                 <button type="submit" class="btn btn-outline btn-sm btn-danger">Refuser</button>
                             </form>

@@ -34,25 +34,55 @@ class HoraireModel {
         }
     }
 
-    /** Résumé pour le footer (plage commune ou détail par jour) */
-    public function getResumeFooter(): string {
+    /**
+     * Résumé pour le footer : regroupe les jours consécutifs aux mêmes horaires.
+     * Ex. « Du Lundi au Samedi · 11:00 - 23:00 » puis « Dimanche · 11:00 - 14:30 »
+     *
+     * @return list<string>
+     */
+    public function getResumeFooter(): array {
         $rows = $this->getAll();
         if (empty($rows)) {
-            return 'Du Lundi au Dimanche · 11h00 - 14h30 | 18h30 - 23h00';
+            return ['Du Lundi au Dimanche · 11h00 - 14h30 | 18h30 - 23h00'];
         }
-        $unique = [];
+
+        $groupes = [];
         foreach ($rows as $h) {
-            $cle = ($h['heure_ouverture'] ?? '') . '|' . ($h['heure_fermeture'] ?? '');
-            $unique[$cle] = ($h['heure_ouverture'] ?? '') . ' - ' . ($h['heure_fermeture'] ?? '');
+            $ouverture = $this->formaterHeure($h['heure_ouverture'] ?? '');
+            $fermeture = $this->formaterHeure($h['heure_fermeture'] ?? '');
+            $plage = $ouverture . ' - ' . $fermeture;
+            $jour = trim((string) ($h['jour'] ?? ''));
+
+            $dernier = $groupes[count($groupes) - 1] ?? null;
+            if ($dernier !== null && $dernier['plage'] === $plage) {
+                $groupes[count($groupes) - 1]['fin'] = $jour;
+                continue;
+            }
+
+            $groupes[] = [
+                'debut' => $jour,
+                'fin'   => $jour,
+                'plage' => $plage,
+            ];
         }
-        if (count($unique) === 1) {
-            $plage = reset($unique);
-            return 'Du ' . ($rows[0]['jour'] ?? 'Lundi') . ' au ' . ($rows[count($rows) - 1]['jour'] ?? 'Dimanche') . ' · ' . $plage;
-        }
+
         $lignes = [];
-        foreach ($rows as $h) {
-            $lignes[] = ($h['jour'] ?? '') . ' : ' . ($h['heure_ouverture'] ?? '') . ' - ' . ($h['heure_fermeture'] ?? '');
+        foreach ($groupes as $g) {
+            if ($g['debut'] === $g['fin']) {
+                $lignes[] = $g['debut'] . ' · ' . $g['plage'];
+            } else {
+                $lignes[] = 'Du ' . $g['debut'] . ' au ' . $g['fin'] . ' · ' . $g['plage'];
+            }
         }
-        return implode(' · ', $lignes);
+
+        return $lignes;
+    }
+
+    private function formaterHeure(string $heure): string {
+        $heure = trim($heure);
+        if ($heure === '') {
+            return '';
+        }
+        return substr($heure, 0, 5);
     }
 }

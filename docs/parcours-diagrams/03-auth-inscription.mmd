@@ -1,0 +1,8 @@
+flowchart TD
+    I1["/inscription"] --> I2{"Formulaire valide ?"}
+    I2 -->|Non| I1
+    I2 -->|Oui| I3["Compte cree"]
+    I3 --> I4["Email de confirmation"]
+    I4 --> I5["/confirmation-email?token="]
+    I5 --> I6["Compte active"]
+    I6 --> I7["/login"]

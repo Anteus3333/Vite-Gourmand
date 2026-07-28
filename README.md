@@ -1,7 +1,13 @@
 # Vite et Gourmand
 
 Application web **mobile first** pour le traiteur événementiel *Vite et Gourmand* (Bordeaux).  
-Projet réalisé dans le cadre de l'**ECF Studi** — découverte des menus, commande en ligne, espaces client, employé et administrateur.
+Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, maquettes, développement MVC, règles métier, sécurité et déploiement.
+
+| | |
+|---|---|
+| **Application en ligne** | [https://vite-et-gourmand.anteusweb.com](https://vite-et-gourmand.anteusweb.com) |
+| **Dépôt GitHub** | [Anteus3333/Vite-Gourmand](https://github.com/Anteus3333/Vite-Gourmand) |
+| **Gestion de projet** | [Trello — Vite et Gourmand (ECF)](https://trello.com/invite/b/6a68f89e1bae43bcad7e1604/ATTI888f7da60bbb9a543d0aaaed96e78728AA5D0E1A/vite-et-gourmand-ecf) |
 
 ---
 
@@ -9,16 +15,19 @@ Projet réalisé dans le cadre de l'**ECF Studi** — découverte des menus, com
 
 - [Stack technique](#stack-technique)
 - [Prérequis](#prérequis)
-- [Installation](#installation)
+- [Installation locale (pas à pas)](#installation-locale-pas-à-pas)
 - [Configuration](#configuration)
 - [Lancement](#lancement)
 - [Comptes de test](#comptes-de-test)
 - [Structure du projet](#structure-du-projet)
+- [Base de données](#base-de-données)
 - [Routes principales](#routes-principales)
 - [Fonctionnalités](#fonctionnalités)
+- [Sécurité](#sécurité)
 - [E-mails](#e-mails)
-- [Git](#git)
+- [Git et branches](#git-et-branches)
 - [Déploiement](#déploiement)
+- [Documentation du rapport](#documentation-du-rapport)
 - [Scripts utiles](#scripts-utiles)
 
 ---
@@ -27,51 +36,61 @@ Projet réalisé dans le cadre de l'**ECF Studi** — découverte des menus, com
 
 | Couche | Technologie |
 |--------|-------------|
-| Back-end | PHP 8+ (architecture MVC maison, sans framework) |
-| Base de données | MySQL / MariaDB — colonne `password` en `VARCHAR(255)` pour bcrypt |
-| Front-end | HTML, CSS (Flexbox / Grid), JavaScript vanilla |
-| Serveur | Apache + `mod_rewrite` (Laragon en local) |
+| Back-end | PHP 8+ — architecture **MVC maison** (sans framework) |
+| Base de données | **MySQL / MariaDB** (source de vérité) |
+| Stats admin (ECF) | **MongoDB Atlas** optionnel (sync depuis MySQL) |
+| Front-end | HTML5, CSS3 (Flexbox / Grid, mobile first), JavaScript vanilla |
+| Serveur | Apache + `mod_rewrite` (Laragon en local, Infomaniak en prod) |
 | Authentification | Sessions PHP, mots de passe hashés (`password_hash` / bcrypt) |
-| Sécurité | CSRF, échappement XSS (`htmlspecialchars`), limitation des tentatives de connexion |
+| Sécurité | CSRF, échappement XSS, limitation des tentatives de connexion, AuthGuard par rôle |
+| Dépendances | Composer (`mongodb/mongodb` pour les stats) |
 
 ---
 
 ## Prérequis
 
-- **PHP** 8.0 ou supérieur (extensions `pdo_mysql`, `session`)
+- **PHP** 8.0+ (extensions `pdo_mysql`, `session`, `gd` recommandée pour l’upload d’images)
 - **MySQL** ou **MariaDB**
-- **Apache** avec `mod_rewrite` activé
+- **Apache** avec `mod_rewrite`
+- **Composer** (pour MongoDB / stats admin — optionnel si stats MySQL seules)
 - En local : [Laragon](https://laragon.org/), XAMPP ou équivalent
 
 ---
 
-## Installation
+## Installation locale (pas à pas)
 
-### 1. Cloner ou copier le projet
-
-Placer le dossier dans le répertoire web de Laragon, par exemple :
-
-```
-c:\laragon\www\Studi_ECF\
-```
-
-### 2. Créer la base de données
-
-Depuis un terminal ou HeidiSQL / phpMyAdmin :
+### 1. Cloner le dépôt
 
 ```bash
-mysql -u root < sql/schema.sql
-mysql -u root < sql/donnees_test.sql
+git clone https://github.com/Anteus3333/Vite-Gourmand.git
+cd Vite-Gourmand
 ```
 
-- `sql/schema.sql` — crée la base `vite_gourmand` et toutes les tables
-- `sql/donnees_test.sql` — insère les données de démonstration (menus, utilisateurs, commandes…)
+Sous Laragon, placer le projet dans `c:\laragon\www\` (ex. `Studi_ECF`).
 
-### 3. Configurer la connexion BDD
+### 2. Dépendances PHP (optionnel mais recommandé)
 
-Copier `config/database.example.php` vers `config/database.local.php` si vos identifiants diffèrent des valeurs par défaut :
+```bash
+composer install
+```
+
+### 3. Créer et peupler la base MySQL
+
+```bash
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS vite_gourmand CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -u root vite_gourmand < sql/schema.sql
+mysql -u root vite_gourmand < sql/donnees_test.sql
+```
+
+- `sql/schema.sql` — structure complète des tables  
+- `sql/donnees_test.sql` — jeux de données (menus, utilisateurs, commandes, avis…)
+
+### 4. Configuration base de données
+
+Créer `config/database.local.php` (non versionné) si les identifiants diffèrent des défauts Laragon :
 
 ```php
+<?php
 return [
     'host'     => 'localhost',
     'db_name'  => 'vite_gourmand',
@@ -80,79 +99,38 @@ return [
 ];
 ```
 
-> Ne jamais versionner `database.local.php`.
+### 5. E-mails (optionnel)
+
+Par défaut, les e-mails sont **simulés** dans `logs/mails/`.  
+Pour un envoi réel (Gmail SMTP), créer `config/mail.local.php` à partir des réglages de `config/mail.php` (mot de passe d’application Google).
+
+### 6. MongoDB (optionnel — stats admin)
+
+Voir `config/mongodb.local.example.php` → `config/mongodb.local.php`.  
+Sans Mongo, le tableau de bord admin utilise MySQL.
 
 ---
 
 ## Configuration
 
-### Base de données
+| Fichier | Rôle |
+|---------|------|
+| `config/database.php` + `database.local.php` | Connexion MySQL |
+| `config/mail.php` + `mail.local.php` | SMTP / simulation |
+| `config/commande.php` | Tarifs livraison, délais, workflow statuts |
+| `config/mongodb.php` + `mongodb.local.php` | Stats Mongo (optionnel) |
 
-Fichiers : `config/database.php` (défauts) + `config/database.local.php` (secrets locaux, optionnel en dev Laragon).
-
-### E-mails (optionnel)
-
-Par défaut, les e-mails sont **simulés** et archivés dans `logs/mails/`.
-
-Adresse officielle du traiteur : **vitegourmand322@gmail.com** (`config/mail.php`).
-
-### Envoi réel (Gmail SMTP)
-
-1. Copier `config/mail.local.example.php` vers `config/mail.local.php`
-2. Créer un **mot de passe d'application** Google (compte Google → Sécurité)
-3. Renseigner le mot de passe dans `mail.local.php` et activer `enabled => true`
-
-> Ne jamais versionner `mail.local.php` (contient des secrets).
-
-### Règles métier commande
-
-Fichier : `config/commande.php` — tarifs livraison, réductions, workflow des statuts employé.
-
-### Images
-
-Les visuels sont dans `public/images/` (SVG générés via `scripts/gen_images.py`).  
-La galerie menus est stockée en BDD (`menu_image`), les photos de plats dans `plat.image`.
-
-Pour régénérer les visuels par défaut :
-
-```bash
-py scripts/gen_images.py
-```
-
-Si la base existait **avant** l’ajout des images, exécuter aussi :
-
-```bash
-php scripts/run_migration.php sql/migration_images.sql
-php scripts/fix_plat_images.php
-```
-
-Si la base existait **avant** la gestion des comptes employé :
-
-```bash
-php scripts/run_migration.php sql/migration_employes.sql
-```
-
-Si la base existait **avant** l'annulation employé / suivi matériel :
-
-```bash
-php scripts/run_migration.php sql/migration_commande_employe.sql
-```
+> **Ne jamais versionner** les fichiers `*.local.php` (secrets).
 
 ---
 
 ## Lancement
 
-### Avec Laragon (URL par défaut)
-
 1. Démarrer Laragon (Apache + MySQL)
-2. Ouvrir : **http://localhost/Studi_ECF/public/**
+2. Ouvrir : **http://localhost/Studi_ECF/public/**  
+   (adapter le nom de dossier si besoin)
 
-Le point d'entrée unique est `public/index.php`. Le dossier `public/` doit être la racine web (DocumentRoot) ou faire partie de l'URL.
-
-### Virtual host (recommandé en production)
-
-Configurer Apache pour que le DocumentRoot pointe directement vers le dossier `public/`.  
-Exemple d'URL : `http://vite-gourmand.local/`
+Le front controller est `public/index.php`. En production, le **DocumentRoot** doit pointer vers `public/`.
 
 ---
 
@@ -162,42 +140,45 @@ Mot de passe commun : **`Test@123456`**
 
 | Rôle | E-mail | Accès |
 |------|--------|--------|
-| Client | `marie@example.com` | Espace client, commandes, avis |
-| Client | `paul@example.com` | Idem — possède une commande **terminée** sans avis (`CMD-20260510-002`) |
-| Client | `sophie@example.com` | Idem |
-| Employé | `julie@vitegourmand.fr` | `/espace-employe` — commandes, menus, plats, horaires, modération avis |
-| Administrateur | `jose@vitegourmand.fr` | `/admin` (tableau de bord) + `/espace-employe` — mêmes droits catalogue + stats admin |
+| Client | `marie@example.com` | `/mon-compte` — commandes, profil, avis |
+| Client | `paul@example.com` | Commande terminée sans avis (`CMD-20260510-002`) |
+| Client | `sophie@example.com` | Espace client |
+| Employé | `julie@vitegourmand.fr` | `/espace-employe` |
+| Administrateur | `jose@vitegourmand.fr` | `/admin` (+ droits employé) |
 
 ---
 
 ## Structure du projet
 
 ```
-Studi_ECF/
+Vite-Gourmand/
 ├── public/                 # Seul dossier exposé au navigateur
 │   ├── index.php           # Front controller
-│   ├── .htaccess           # Réécriture d'URL
-│   ├── css/
-│   ├── js/
-│   └── images/             # Bandeau, favicon, menus, plats
+│   ├── css/  js/  images/
 ├── src/
-│   ├── Controllers/        # Logique métier (Home, Auth, Menu, Commande…)
+│   ├── Controllers/        # Auth, Menu, Commande, Compte, Employé, Admin…
 │   ├── Models/             # Accès BDD (PDO)
 │   ├── Views/              # Templates PHP
-│   ├── Services/           # Mailer, CSRF, AuthGuard, AssetHelper…
-│   └── Router.php          # Routeur manuel
+│   ├── Services/           # Mailer, CSRF, AuthGuard, upload images, Mongo…
+│   └── Router.php
 ├── config/
-│   ├── database.php
-│   ├── mail.php
-│   └── commande.php
-├── sql/
-│   ├── schema.sql          # Structure BDD
-│   └── donnees_test.sql    # Données de démo
-├── scripts/
-│   ├── run_migration.php   # Exécution de fichiers SQL ponctuels
-│   └── gen_images.py       # Génération des visuels SVG par défaut
-└── logs/mails/             # Archivage des e-mails (mode dev)
+├── sql/                    # schema + fixtures + migrations
+├── docs/                   # Déploiement, parcours, rapport ECF
+├── scripts/                # Migrations, optimisation images, sync Mongo
+├── composer.json
+└── README.md
 ```
+
+---
+
+## Base de données
+
+Fichiers fournis dans `sql/` :
+
+| Fichier | Usage |
+|---------|--------|
+| `schema.sql` | Création des tables |
+| `donnees_test.sql` | Jeu de données de démonstration |
 
 ---
 
@@ -205,113 +186,101 @@ Studi_ECF/
 
 | URL | Description |
 |-----|-------------|
-| `/` | Accueil + avis clients validés |
-| `/menus` | Catalogue avec filtres dynamiques (AJAX) |
-| `/menu/{id}` | Détail d'un menu |
-| `/commande` | Passage de commande (connecté) |
-| `/contact` | Formulaire de contact |
+| `/` | Accueil |
+| `/menus`, `/menu/{id}` | Catalogue et détail |
+| `/commande` | Passer commande (connecté) |
 | `/login`, `/inscription` | Authentification |
-| `/mon-compte` | Espace client (commandes, profil, avis) |
-| `/espace-employe` | Gestion commandes, menus, plats, horaires, modération avis |
-| `/admin` | Tableau de bord administrateur (stats, alertes stock, comptes employé) |
-| `/admin/employes` | Gestion des comptes employé |
-| `/mentions-legales`, `/cgv`, `/accessibilite` | Pages légales et accessibilité |
+| `/mon-compte` | Espace client |
+| `/espace-employe` | Espace employé |
+| `/admin` | Administration |
+| `/contact` | Contact |
+| Pages légales | Mentions, CGV, confidentialité, accessibilité |
+
+Cartographie détaillée : [`docs/PARCOURS-SITE.md`](docs/PARCOURS-SITE.md) / [`docs/PARCOURS-SITE.pdf`](docs/PARCOURS-SITE.pdf)
 
 ---
 
 ## Fonctionnalités
 
 ### Visiteur / client
-- Parcours menus (filtres sans rechargement)
-- Création de compte et connexion sécurisée
-- Commande avec calcul automatique du prix (livraison, réduction)
-- Suivi de commande, modification et annulation (tant que non acceptée)
-- Dépôt d'avis après commande terminée (modération employé)
+- Catalogue menus (filtres AJAX), détail, commande avec calcul prix / distance
+- Inscription avec confirmation e-mail, connexion, mot de passe oublié
+- Suivi, modification et annulation de commande (selon délai / statut)
+- Avis après prestation livrée (modération employé)
 
 ### Employé
-- Validation des commandes et changement de statuts (workflow)
-- **Filtre des commandes par statut ou par client**
-- **Annulation avec motif et mode de contact client** (e-mail au client)
-- **E-mail automatique** au statut « en attente du retour de matériel » (10 j. ouvrés, 600 € — CGV)
-- Suivi matériel prêté / restitué
-- CRUD menus, association des plats et allergènes
-- Gestion des horaires (footer)
-- Modération des avis (publier / refuser)
+- Workflow commandes (statuts, matériel, annulation motivée)
+- CRUD menus / plats (photos, galerie auto, visibilité si ≥ 3 plats)
+- Horaires (footer), modération des avis
 
 ### Administrateur
-- Tableau de bord (stats, **graphiques commandes et CA par menu** avec filtres période/menu, alertes stock, comptes employé)
-- **Création et désactivation des comptes employé** (e-mail de notification)
-- Accès complet à l'espace employé et aux mêmes outils catalogue
+- Dashboard (stats MySQL ou Mongo), sync MySQL → Mongo
+- Gestion des comptes employé
+- Même catalogue et commandes que l’espace employé
 
-### Transversal
-- Protection CSRF sur les formulaires sensibles
-- Accessibilité RGAA (lien d'évitement, navigation clavier, déclaration `/accessibilite`)
-- Mentions légales et CGV
+---
+
+## Sécurité
+
+- Mots de passe **bcrypt**
+- Jetons **CSRF** sur formulaires sensibles
+- Échappement **XSS** (`htmlspecialchars`)
+- Limitation des **tentatives de connexion**
+- Contrôle d’accès par rôle (**AuthGuard**)
+- Upload images contrôlé (MIME, taille, ré-encodage GD)
 
 ---
 
 ## E-mails
 
-En l'absence de configuration SMTP, chaque envoi est enregistré dans :
+Sans SMTP : archivage dans `logs/mails/`.  
+Avec Gmail SMTP (`mail.local.php`) : envoi réel.
 
-```
-logs/mails/YYYY-MM-DD_HHMMSS_destinataire.txt
-```
-
-E-mails déclenchés : bienvenue, confirmation commande, réinitialisation mot de passe, contact, notification avis disponible.
+Déclencheurs : confirmation d’inscription, bienvenue, commande, reset MDP, contact, avis, notifications employé / matériel.
 
 ---
 
-## Git
+## Git et branches
 
-Le projet utilise **Git** avec deux branches :
+Conformément aux consignes ECF :
 
 | Branche | Rôle |
 |---------|------|
 | `main` | Version stable (production) |
-| `dev` | Développement et corrections |
+| `dev` | Intégration / développement (équivalent *development*) |
+| `feature/*` | Une branche par fonctionnalité, fusionnée dans `dev` après tests |
 
-### Première publication sur GitHub
+Flux : `feature/*` → `dev` (tests) → `main`.
 
-```bash
-git init
-git add .
-git commit -m "Initial commit — application Vite et Gourmand (ECF Studi)"
-git branch -M main
-git branch dev
-git remote add origin https://github.com/VOTRE_COMPTE/NOM_DU_REPO.git
-git push -u origin main
-git push -u origin dev
-```
-
-Fichiers **exclus** du dépôt (`.gitignore`) : `config/database.local.php`, `config/mail.local.php`, `logs/`.
+Fichiers exclus (`.gitignore`) : `config/*.local.php`, `logs/`, `vendor/` selon config, archives lourdes éventuelles.
 
 ---
 
 ## Déploiement
 
-Guide détaillé : **[docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md)**
+- Guide générique : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
+- **Infomaniak** (prod) : [`docs/DEPLOIEMENT-INFOMANIAK.md`](docs/DEPLOIEMENT-INFOMANIAK.md)  
+  URL : https://vite-et-gourmand.anteusweb.com
 
-Résumé :
+---
 
-1. Créer une base MySQL sur l'hébergeur et importer `sql/schema.sql` + `sql/donnees_test.sql`
-2. Uploader le projet (DocumentRoot = dossier **`public/`** de préférence)
-3. Créer sur le serveur `config/database.local.php` et `config/mail.local.php`
-4. Vérifier les parcours principaux et mettre à jour les mentions légales (hébergeur)
+## Documentation du rapport
+
+Le dossier [`docs/rapport/`](docs/rapport/) regroupe le plan et les chapitres du livrable ECF (manuel utilisateur, charte graphique, gestion de projet, doc technique).
 
 ---
 
 ## Scripts utiles
 
-Exécuter un fichier SQL ponctuel via PDO :
-
 ```bash
 php scripts/run_migration.php chemin/vers/fichier.sql
+php scripts/optimize-images.php
+php scripts/sync_stats_mongo.php
 ```
 
 ---
 
 ## Auteur & contexte
 
-Projet **ECF — Développeur web et web mobile**  
+Projet **ECF — Développeur web et web mobile** (Studi)  
 Entreprise fictive : **Vite et Gourmand** — Julie & José, traiteurs à Bordeaux depuis 25 ans.

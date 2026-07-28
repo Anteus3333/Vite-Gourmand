@@ -1,6 +1,6 @@
 <?php 
 ob_start(); 
-$bannerUrl = AssetHelper::imageUrl('banner-accueil.svg');
+$bannerUrl = AssetHelper::imageUrl('banner-accueil.jpg');
 ?>
 
 <section class="menus-hero home-hero" style="background-image: url('<?= htmlspecialchars($bannerUrl) ?>')">
@@ -12,8 +12,8 @@ $bannerUrl = AssetHelper::imageUrl('banner-accueil.svg');
 <section class="presentation" aria-labelledby="presentation-titre">
     <div class="presentation-inner">
         <div class="presentation-visuel">
-            <img src="<?= htmlspecialchars(AssetHelper::imageUrl('presentation-equipe.svg')) ?>"
-                 alt="Julie et José, fondateurs de Vite et Gourmand" width="600" height="400" loading="lazy">
+            <img src="<?= htmlspecialchars(AssetHelper::imageUrl('julie-josee.jpg')) ?>"
+                 alt="Julie et José, fondateurs de Vite et Gourmand" width="2669" height="1918" loading="lazy">
         </div>
 
         <div class="presentation-texte">
@@ -24,13 +24,12 @@ $bannerUrl = AssetHelper::imageUrl('banner-accueil.svg');
             </p>
             <p>
                 Vite et Gourmand, c'est l'histoire de deux passionnés de la gastronomie réunis autour
-                d'une même exigence : vous offrir une prestation irréprochable, du simple repas de
-                Noël ou de Pâques jusqu'aux réceptions les plus prestigieuses.
+                d'une même exigence : vous offrir une prestation irréprochable, d'un repas simple et
+                authentique jusqu'aux réceptions les plus prestigieuses, sans oublier vos menus de fêtes.
             </p>
             <p>
-                Nos cartes évoluent au fil des saisons et des producteurs bordelais. Auparavant réservés
-                à nos clients fidèles par e-mail, nos menus sont désormais accessibles en ligne pour
-                faciliter vos commandes.
+                Nos cartes évoluent au fil des saisons et des producteurs bordelais. Pour faciliter vos
+                commandes, tous nos menus sont directement accessibles en ligne.
             </p>
         </div>
 
@@ -82,7 +81,7 @@ $bannerUrl = AssetHelper::imageUrl('banner-accueil.svg');
                 <article class="avis-card">
                     <p class="note">Note : <?= htmlspecialchars($avis['note']) ?> / 5</p>
                     <p class="commentaire">"<?= htmlspecialchars($avis['description']) ?>"</p>
-                    <p class="auteur">- <?= htmlspecialchars($avis['prenom']) ?></p>
+                    <p class="auteur">- <?= htmlspecialchars(ViewHelper::formatPrenom($avis['prenom'] ?? '')) ?></p>
                 </article>
             <?php endforeach; ?>
         <?php else: ?>

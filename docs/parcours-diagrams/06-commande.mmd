@@ -1,0 +1,16 @@
+flowchart TD
+    C0{"Utilisateur connecte ?"}
+    C0 -->|Non| CLOGIN["/login?redirect=/commande"]
+    C0 -->|Oui| C1["/commande"]
+    CLOGIN --> C1
+
+    C1 --> C2["Selection menu, date, nb personnes"]
+    C2 --> C3["Adresse et ville de livraison"]
+    C3 --> API1["API /api/calcul-prix"]
+    C3 --> API2["API /api/calcul-distance"]
+    C3 --> C4{"CGV acceptees ?"}
+    C4 -->|Non| C1
+    C4 -->|Oui| C5["Commande enregistree"]
+    C5 --> C6["Statut : en attente"]
+    C6 --> C7["Email de confirmation"]
+    C7 --> C8["/mon-compte/commandes"]

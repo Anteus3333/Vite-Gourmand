@@ -15,10 +15,16 @@ $cm = $commandeModel;
         <div class="compte-card">
             <h2>Mes informations</h2>
             <ul class="compte-infos">
-                <li><strong><?= htmlspecialchars(trim(($utilisateur['prenom'] ?? '') . ' ' . ($utilisateur['nom'] ?? ''))) ?></strong></li>
+                <li><strong><?= htmlspecialchars(ViewHelper::formatNomComplet($utilisateur['prenom'] ?? '', $utilisateur['nom'] ?? '')) ?></strong></li>
                 <li><?= htmlspecialchars($utilisateur['email']) ?></li>
                 <li><?= htmlspecialchars($utilisateur['telephone'] ?? '') ?></li>
                 <li><?= htmlspecialchars($utilisateur['adresse_postale'] ?? '') ?></li>
+                <?php
+                $cpVille = trim(($utilisateur['code_postal'] ?? '') . ' ' . ($utilisateur['ville'] ?? ''));
+                if ($cpVille !== ''):
+                ?>
+                    <li><?= htmlspecialchars($cpVille) ?></li>
+                <?php endif; ?>
             </ul>
             <?= ViewHelper::btnNav(BASE_URL . '/mon-compte/profil', 'Modifier mon profil', 'btn btn-outline') ?>
         </div>

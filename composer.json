@@ -1,0 +1,14 @@
+{
+    "name": "studi/vite-et-gourmand",
+    "description": "ECF Vite et Gourmand — traiteur événementiel",
+    "require": {
+        "php": ">=8.1",
+        "ext-mongodb": "*",
+        "mongodb/mongodb": "^1.19"
+    },
+    "autoload": {
+        "classmap": [
+            "src/"
+        ]
+    }
+}

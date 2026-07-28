@@ -193,6 +193,40 @@ class CommandeModel {
         return $stmt->fetchAll() ?: [];
     }
 
+    /**
+     * Commandes en cours (hors attente de validation, terminées et annulées).
+     * Triées par date de prestation croissante (plus urgentes en premier).
+     */
+    public function getEnCours(int $limit = 5): array {
+        $exclus = ['en_attente', 'terminee', 'annulee'];
+        $enCours = array_values(array_filter(
+            $this->getAllToutes(),
+            fn(array $c): bool => !in_array($this->normaliserStatut($c['statut'] ?? ''), $exclus, true)
+        ));
+
+        usort($enCours, static function (array $a, array $b): int {
+            $cmp = strcmp((string) ($a['date_prestation'] ?? ''), (string) ($b['date_prestation'] ?? ''));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return strcmp((string) ($a['heure_livraison'] ?? ''), (string) ($b['heure_livraison'] ?? ''));
+        });
+
+        return array_slice($enCours, 0, max(0, $limit));
+    }
+
+    /** Nombre de commandes en cours (hors attente / terminée / annulée). */
+    public function compterEnCours(): int {
+        $exclus = ['en_attente', 'terminee', 'annulee'];
+        $total = 0;
+        foreach ($this->compterParStatut() as $statut => $nb) {
+            if (!in_array($statut, $exclus, true)) {
+                $total += $nb;
+            }
+        }
+        return $total;
+    }
+
     /** Clients ayant passé au moins une commande (filtre employé). */
     public function getClientsAvecCommandes(): array {
         $stmt = $this->conn->query("
@@ -233,6 +267,47 @@ class CommandeModel {
             $counts[$this->normaliserStatut($row['statut'] ?? '')] = (int) $row['total'];
         }
         return $counts;
+    }
+
+    /** Export MySQL → Mongo (tous les documents stats). */
+    public function getAllPourStatsMongo(): array {
+        $stmt = $this->conn->query("
+            SELECT c.numero_commande,
+                   DATE(c.date_commande) AS date_commande,
+                   c.prix_menu,
+                   c.prix_livraison,
+                   (c.prix_menu + c.prix_livraison) AS montant,
+                   c.statut,
+                   m.menu_id,
+                   m.titre AS menu_titre
+            FROM Commande c
+            INNER JOIN commande_menu cm ON cm.numero_commande = c.numero_commande
+            INNER JOIN menu m ON m.menu_id = cm.menu_id
+            ORDER BY c.date_commande ASC, c.numero_commande ASC
+        ");
+        return $stmt->fetchAll() ?: [];
+    }
+
+    /** Une commande + menu pour upsert Mongo. */
+    public function getPourStatsMongo(string $numero): ?array {
+        $stmt = $this->conn->prepare("
+            SELECT c.numero_commande,
+                   DATE(c.date_commande) AS date_commande,
+                   c.prix_menu,
+                   c.prix_livraison,
+                   (c.prix_menu + c.prix_livraison) AS montant,
+                   c.statut,
+                   m.menu_id,
+                   m.titre AS menu_titre
+            FROM Commande c
+            INNER JOIN commande_menu cm ON cm.numero_commande = c.numero_commande
+            INNER JOIN menu m ON m.menu_id = cm.menu_id
+            WHERE c.numero_commande = :numero
+            LIMIT 1
+        ");
+        $stmt->execute([':numero' => $numero]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 
     /**

@@ -16,14 +16,21 @@ class Mailer {
     }
 
     /**
-     * Envoie un mail texte simple.
+     * Envoie un mail texte ou HTML.
      * - Si SMTP est activé (mail.local.php), envoi réel via Gmail.
-     * - Sinon, tentative via mail() PHP + copie dans logs/mails/ (mode dev).
+     * - Sinon, tentative via mail() PHP.
+     * Une copie est toujours archivée dans logs/mails/ (utile en local).
      *
      * @param string|null $replyTo Adresse de réponse (ex: mail du visiteur sur le formulaire contact)
      */
-    public function send(string $destinataire, string $sujet, string $message, ?string $replyTo = null): bool {
-        $headers = $this->construireHeaders($replyTo);
+    public function send(
+        string $destinataire,
+        string $sujet,
+        string $message,
+        ?string $replyTo = null,
+        bool $html = false
+    ): bool {
+        $headers = $this->construireHeaders($replyTo, $html);
 
         $envoye = false;
         if ($this->smtpActif()) {
@@ -33,7 +40,6 @@ class Mailer {
         }
 
         $this->archiver($destinataire, $sujet, $message, $envoye);
-
         return $envoye;
     }
 
@@ -50,18 +56,27 @@ class Mailer {
             && $smtp['password'] !== 'VOTRE_MOT_DE_PASSE_OU_MOT_DE_PASSE_APPLICATION';
     }
 
-    private function construireHeaders(?string $replyTo = null): string {
+    private function construireHeaders(?string $replyTo = null, bool $html = false): string {
         $fromName  = $this->config['from_name'];
         $fromEmail = $this->config['from_email'];
+        $type = $html ? 'text/html' : 'text/plain';
 
         $headers = "From: {$fromName} <{$fromEmail}>\r\n"
-                 . "Content-Type: text/plain; charset=utf-8";
+                 . "MIME-Version: 1.0\r\n"
+                 . "Content-Type: {$type}; charset=utf-8";
 
         if ($replyTo && filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
             $headers .= "\r\nReply-To: {$replyTo}";
         }
 
         return $headers;
+    }
+
+    private function encoderSujet(string $sujet): string {
+        if (function_exists('mb_encode_mimeheader')) {
+            return mb_encode_mimeheader($sujet, 'UTF-8', 'B', "\r\n");
+        }
+        return $sujet;
     }
 
     private function envoyerViaSmtp(string $destinataire, string $sujet, string $message, string $headers): bool {
@@ -83,37 +98,43 @@ class Mailer {
             }
 
             stream_set_timeout($socket, 15);
-            $this->lireReponse($socket);
+            if (!$this->attendreCode($socket, [220])) {
+                fclose($socket);
+                return false;
+            }
 
-            $this->envoyerCommande($socket, "EHLO localhost");
+            $this->envoyerCommande($socket, "EHLO localhost", [250]);
             if (($smtp['encryption'] ?? '') === 'tls') {
-                $this->envoyerCommande($socket, 'STARTTLS');
+                $this->envoyerCommande($socket, 'STARTTLS', [220]);
                 if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
                     fclose($socket);
                     return false;
                 }
-                $this->envoyerCommande($socket, "EHLO localhost");
+                $this->envoyerCommande($socket, "EHLO localhost", [250]);
             }
 
-            $this->envoyerCommande($socket, 'AUTH LOGIN');
-            $this->envoyerCommande($socket, base64_encode($smtp['username']));
-            $this->envoyerCommande($socket, base64_encode($smtp['password']));
+            $this->envoyerCommande($socket, 'AUTH LOGIN', [334]);
+            $this->envoyerCommande($socket, base64_encode($smtp['username']), [334]);
+            $this->envoyerCommande($socket, base64_encode($smtp['password']), [235]);
 
             $from = $this->config['from_email'];
-            $this->envoyerCommande($socket, "MAIL FROM:<{$from}>");
-            $this->envoyerCommande($socket, "RCPT TO:<{$destinataire}>");
+            $this->envoyerCommande($socket, "MAIL FROM:<{$from}>", [250]);
+            $this->envoyerCommande($socket, "RCPT TO:<{$destinataire}>", [250, 251]);
 
-            $this->envoyerCommande($socket, 'DATA');
+            $this->envoyerCommande($socket, 'DATA', [354]);
 
             $corps = "To: {$destinataire}\r\n"
-                   . "Subject: {$sujet}\r\n"
+                   . "Subject: " . $this->encoderSujet($sujet) . "\r\n"
                    . str_replace("\n", "\r\n", $headers) . "\r\n\r\n"
                    . str_replace("\n.", "\n..", $message);
 
             fwrite($socket, $corps . "\r\n.\r\n");
-            $this->lireReponse($socket);
+            if (!$this->attendreCode($socket, [250])) {
+                fclose($socket);
+                return false;
+            }
 
-            $this->envoyerCommande($socket, 'QUIT');
+            $this->envoyerCommande($socket, 'QUIT', [221]);
             fclose($socket);
 
             return true;
@@ -122,9 +143,22 @@ class Mailer {
         }
     }
 
-    private function envoyerCommande($socket, string $commande): void {
+    /** @param int[] $codesOk */
+    private function envoyerCommande($socket, string $commande, array $codesOk): void {
         fwrite($socket, $commande . "\r\n");
-        $this->lireReponse($socket);
+        if (!$this->attendreCode($socket, $codesOk)) {
+            throw new RuntimeException('Réponse SMTP inattendue pour : ' . $commande);
+        }
+    }
+
+    /** @param int[] $codesOk */
+    private function attendreCode($socket, array $codesOk): bool {
+        $reponse = $this->lireReponse($socket);
+        if ($reponse === '') {
+            return false;
+        }
+        $code = (int) substr($reponse, 0, 3);
+        return in_array($code, $codesOk, true);
     }
 
     private function lireReponse($socket): string {

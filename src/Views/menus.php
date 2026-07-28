@@ -55,11 +55,10 @@ ob_start();
                 </div>
 
                 <div class="champ">
-                    <label for="filter-persons">Nombre de personnes</label>
+                    <label for="filter-persons">Nombre de personnes min.</label>
                     <input type="number" id="filter-persons" name="nombre_personne" min="1"
                            value="<?= htmlspecialchars($filtres['nombre_personne']) ?>"
                            placeholder="Ex : 10" class="filter-input">
-                    <small class="aide">Menus dont le minimum est ≤ à ce nombre</small>
                 </div>
 
                 <div class="filters-actions">

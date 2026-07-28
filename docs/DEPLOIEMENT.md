@@ -103,7 +103,8 @@ return [
 ];
 ```
 
-Créer le dossier **`logs/mails/`** en écriture (chmod 755 ou 775 selon l'hébergeur).
+Créer le dossier **`logs/mails/`** en écriture uniquement si SMTP n'est pas configuré (mode dev).  
+Avec **`mail.local.php`** et Gmail actif, l'archivage fichier est désactivé — le dossier `logs/` n'est pas nécessaire en production.
 
 ---
 

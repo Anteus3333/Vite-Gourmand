@@ -16,8 +16,8 @@ class MenuController {
     public function list() {
         $titrePage = "Nos Menus - Vite et Gourmand";
 
-        // Récupère tous les menus
-        $menus = $this->model->getAllMenus();
+        // Récupère tous les menus visibles
+        $menus = $this->model->getAllMenus(true);
 
         // Récupère les options de filtres
         $themes = $this->model->getAllThemes();
@@ -69,7 +69,7 @@ class MenuController {
         // Récupère le menu
         $menu = $this->model->getMenuById($menuId);
 
-        if (!$menu) {
+        if (!$menu || (int) ($menu['visible'] ?? 0) !== 1) {
             http_response_code(404);
             echo "Menu non trouvé";
             return;

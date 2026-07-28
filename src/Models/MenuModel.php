@@ -4,6 +4,9 @@
 require_once __DIR__ . '/../../config/database.php';
 
 class MenuModel {
+    /** Nombre minimal de plats pour pouvoir publier un menu. */
+    public const MIN_PLATS_VISIBLE = 3;
+
     private $conn;
 
     public function __construct() {
@@ -12,9 +15,10 @@ class MenuModel {
     }
 
     /**
-     * Récupère tous les menus avec leurs informations associées
+     * Récupère tous les menus avec leurs informations associées.
+     * @param bool $uniquementVisibles true = catalogue public / commande
      */
-    public function getAllMenus() {
+    public function getAllMenus(bool $uniquementVisibles = false) {
         $query = "
             SELECT 
                 m.menu_id,
@@ -23,6 +27,7 @@ class MenuModel {
                 m.nombre_personne_minimun,
                 m.prix_par_personne,
                 m.quantite_restante,
+                m.visible,
                 m.theme_id,
                 m.regime_id,
                 t.libelle AS theme,
@@ -30,13 +35,17 @@ class MenuModel {
             FROM menu m
             LEFT JOIN theme t ON m.theme_id = t.theme_id
             LEFT JOIN regime r ON m.regime_id = r.regime_id
-            ORDER BY m.titre ASC
         ";
+        if ($uniquementVisibles) {
+            $query .= " WHERE m.visible = 1";
+        }
+        $query .= " ORDER BY m.titre ASC";
 
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $this->attacherCouvertures($stmt->fetchAll() ?: []);
     }
+
     public function getMenuById(int $menuId) {
         $query = "
             SELECT 
@@ -46,6 +55,7 @@ class MenuModel {
                 m.nombre_personne_minimun,
                 m.prix_par_personne,
                 m.quantite_restante,
+                m.visible,
                 m.theme_id,
                 m.regime_id,
                 t.libelle AS theme,
@@ -60,13 +70,15 @@ class MenuModel {
         $stmt->execute([':menu_id' => $menuId]);
         $menu = $stmt->fetch() ?: null;
         if ($menu) {
+            $menu['visible'] = (int) ($menu['visible'] ?? 1);
             $menu['image_couverture'] = $this->getCouverture($menuId);
         }
         return $menu;
     }
 
-    /** Galerie d'images d'un menu */
+    /** Galerie d'images d'un menu (recalculée à partir couverture + plats). */
     public function getImagesByMenuId(int $menuId): array {
+        $this->synchroniserGalerieMenu($menuId);
         $stmt = $this->conn->prepare("
             SELECT fichier, legende, ordre
             FROM menu_image
@@ -75,6 +87,63 @@ class MenuModel {
         ");
         $stmt->execute([':id' => $menuId]);
         return $stmt->fetchAll() ?: [];
+    }
+
+    /**
+     * Reconstruit la galerie : ordre 1 = couverture menu, ordres 2–4 = 3 premiers plats avec photo.
+     */
+    public function synchroniserGalerieMenu(int $menuId): void {
+        $menu = $this->getMenuById($menuId);
+        if (!$menu) {
+            return;
+        }
+
+        $couverture = $this->getFichierCouverture($menuId);
+        $plats = $this->getPlatsByMenuId($menuId);
+
+        $slots = [];
+        if ($couverture !== null && $couverture !== '') {
+            $slots[1] = [
+                'fichier'  => $couverture,
+                'legende'  => (string) $menu['titre'],
+            ];
+        }
+
+        $ordre = 2;
+        foreach ($plats as $plat) {
+            if ($ordre > 4) {
+                break;
+            }
+            $image = trim((string) ($plat['image'] ?? ''));
+            if ($image === '') {
+                continue;
+            }
+            $slots[$ordre] = [
+                'fichier'  => $image,
+                'legende'  => (string) $plat['titre_plat'],
+            ];
+            $ordre++;
+        }
+
+        for ($o = 1; $o <= 4; $o++) {
+            if (isset($slots[$o])) {
+                $this->upsertImageGalerie($menuId, $o, $slots[$o]['fichier'], $slots[$o]['legende']);
+            } else {
+                $this->supprimerImageGalerieOrdre($menuId, $o);
+            }
+        }
+
+        $this->conn->prepare("DELETE FROM menu_image WHERE menu_id = :id AND ordre > 4")
+            ->execute([':id' => $menuId]);
+    }
+
+    /** Met à jour la galerie de tous les menus contenant ce plat. */
+    public function synchroniserGaleriePourPlat(int $platId): void {
+        $stmt = $this->conn->prepare("SELECT DISTINCT menu_id FROM contenu_menu WHERE plat_id = :id");
+        $stmt->execute([':id' => $platId]);
+        foreach ($stmt->fetchAll() ?: [] as $row) {
+            $this->synchroniserGalerieMenu((int) $row['menu_id']);
+        }
     }
 
     /** Plats d'un menu avec image et allergènes par plat */
@@ -108,13 +177,57 @@ class MenuModel {
     }
 
     private function getCouverture(int $menuId): ?string {
+        return $this->getFichierCouverture($menuId);
+    }
+
+    /** Fichier couverture (ordre 1) sans resynchroniser la galerie. */
+    private function getFichierCouverture(int $menuId): ?string {
         $stmt = $this->conn->prepare("
             SELECT fichier FROM menu_image
-            WHERE menu_id = :id ORDER BY ordre ASC, image_id ASC LIMIT 1
+            WHERE menu_id = :id AND ordre = 1
+            LIMIT 1
         ");
         $stmt->execute([':id' => $menuId]);
         $row = $stmt->fetch();
-        return $row['fichier'] ?? null;
+        return isset($row['fichier']) && $row['fichier'] !== '' ? (string) $row['fichier'] : null;
+    }
+
+    private function upsertImageGalerie(int $menuId, int $ordre, string $fichier, ?string $legende): void {
+        $stmt = $this->conn->prepare("
+            SELECT image_id FROM menu_image
+            WHERE menu_id = :menu_id AND ordre = :ordre
+            LIMIT 1
+        ");
+        $stmt->execute([':menu_id' => $menuId, ':ordre' => $ordre]);
+        $imageId = $stmt->fetchColumn();
+
+        if ($imageId) {
+            $upd = $this->conn->prepare("
+                UPDATE menu_image SET fichier = :fichier, legende = :legende
+                WHERE image_id = :image_id
+            ");
+            $upd->execute([
+                ':fichier'   => $fichier,
+                ':legende'   => $legende,
+                ':image_id'  => (int) $imageId,
+            ]);
+        } else {
+            $ins = $this->conn->prepare("
+                INSERT INTO menu_image (menu_id, fichier, legende, ordre)
+                VALUES (:menu_id, :fichier, :legende, :ordre)
+            ");
+            $ins->execute([
+                ':menu_id' => $menuId,
+                ':fichier' => $fichier,
+                ':legende' => $legende,
+                ':ordre'   => $ordre,
+            ]);
+        }
+    }
+
+    private function supprimerImageGalerieOrdre(int $menuId, int $ordre): void {
+        $this->conn->prepare("DELETE FROM menu_image WHERE menu_id = :id AND ordre = :ordre")
+            ->execute([':id' => $menuId, ':ordre' => $ordre]);
     }
 
     private function attacherCouvertures(array $menus): array {
@@ -150,7 +263,8 @@ class MenuModel {
         $query = "
             SELECT 
                 p.plat_id,
-                p.titre_plat
+                p.titre_plat,
+                p.image
             FROM plat p
             JOIN contenu_menu cm ON p.plat_id = cm.plat_id
             WHERE cm.menu_id = :menu_id
@@ -212,6 +326,7 @@ class MenuModel {
                 MIN(prix_par_personne) AS prix_min,
                 MAX(prix_par_personne) AS prix_max
             FROM menu
+            WHERE visible = 1
         ";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -230,6 +345,7 @@ class MenuModel {
                 m.nombre_personne_minimun,
                 m.prix_par_personne,
                 m.quantite_restante,
+                m.visible,
                 m.theme_id,
                 m.regime_id,
                 t.libelle AS theme,
@@ -237,7 +353,7 @@ class MenuModel {
             FROM menu m
             LEFT JOIN theme t ON m.theme_id = t.theme_id
             LEFT JOIN regime r ON m.regime_id = r.regime_id
-            WHERE 1=1
+            WHERE m.visible = 1
         ";
 
         $params = [];
@@ -282,8 +398,8 @@ class MenuModel {
     public function creer(array $data): int {
         $stmt = $this->conn->prepare("
             INSERT INTO menu (titre, description, nombre_personne_minimun, prix_par_personne,
-                              quantite_restante, theme_id, regime_id)
-            VALUES (:titre, :description, :minimum, :prix, :stock, :theme_id, :regime_id)
+                              quantite_restante, visible, theme_id, regime_id)
+            VALUES (:titre, :description, :minimum, :prix, :stock, 0, :theme_id, :regime_id)
         ");
         $stmt->execute([
             ':titre'       => $data['titre'],
@@ -295,6 +411,55 @@ class MenuModel {
             ':regime_id'   => (int) $data['regime_id'],
         ]);
         return (int) $this->conn->lastInsertId();
+    }
+
+    /**
+     * Définit / remplace la couverture (ordre 1).
+     * @return string|null ancien chemin fichier (pour suppression disque éventuelle)
+     */
+    public function definirCouverture(int $menuId, string $fichier, ?string $legende = null): ?string {
+        $ancien = $this->getCouverture($menuId);
+        $stmt = $this->conn->prepare("
+            SELECT image_id FROM menu_image
+            WHERE menu_id = :id AND ordre = 1
+            LIMIT 1
+        ");
+        $stmt->execute([':id' => $menuId]);
+        $imageId = $stmt->fetchColumn();
+
+        if ($imageId) {
+            $upd = $this->conn->prepare("
+                UPDATE menu_image
+                SET fichier = :fichier, legende = :legende
+                WHERE image_id = :image_id
+            ");
+            $upd->execute([
+                ':fichier'  => $fichier,
+                ':legende'  => $legende,
+                ':image_id' => (int) $imageId,
+            ]);
+        } else {
+            $ins = $this->conn->prepare("
+                INSERT INTO menu_image (menu_id, fichier, legende, ordre)
+                VALUES (:menu_id, :fichier, :legende, 1)
+            ");
+            $ins->execute([
+                ':menu_id' => $menuId,
+                ':fichier' => $fichier,
+                ':legende' => $legende,
+            ]);
+        }
+
+        $this->synchroniserGalerieMenu($menuId);
+
+        return $ancien !== $fichier ? $ancien : null;
+    }
+
+    /** Chemins relatifs des images d'un menu (pour nettoyage disque). */
+    public function getFichiersImages(int $menuId): array {
+        $stmt = $this->conn->prepare("SELECT fichier FROM menu_image WHERE menu_id = :id");
+        $stmt->execute([':id' => $menuId]);
+        return array_column($stmt->fetchAll() ?: [], 'fichier');
     }
 
     public function modifier(int $menuId, array $data): void {
@@ -315,6 +480,7 @@ class MenuModel {
             ':regime_id'   => (int) $data['regime_id'],
             ':id'          => $menuId,
         ]);
+        $this->synchroniserGalerieMenu($menuId);
     }
 
     public function supprimer(int $menuId): bool {
@@ -322,14 +488,93 @@ class MenuModel {
             return false;
         }
         $this->conn->prepare("DELETE FROM contenu_menu WHERE menu_id = :id")->execute([':id' => $menuId]);
+        // menu_image : ON DELETE CASCADE
         $this->conn->prepare("DELETE FROM menu WHERE menu_id = :id")->execute([':id' => $menuId]);
         return true;
     }
 
+    /** Le menu a déjà été lié à au moins une commande (historique). */
     public function aDesCommandes(int $menuId): bool {
         $stmt = $this->conn->prepare("SELECT 1 FROM commande_menu WHERE menu_id = :id LIMIT 1");
         $stmt->execute([':id' => $menuId]);
         return (bool) $stmt->fetch();
+    }
+
+    /**
+     * Commandes encore « actives » sur ce menu (tout sauf terminée / annulée).
+     * Bloque alors la modification du menu et de ses plats.
+     */
+    public function compterCommandesActives(int $menuId): int {
+        $stmt = $this->conn->prepare("
+            SELECT COUNT(*)
+            FROM commande_menu cm
+            INNER JOIN Commande c ON c.numero_commande = cm.numero_commande
+            WHERE cm.menu_id = :id
+              AND LOWER(TRIM(c.statut)) NOT IN ('terminee', 'annulee', 'terminée', 'annulée')
+        ");
+        $stmt->execute([':id' => $menuId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function aDesCommandesActives(int $menuId): bool {
+        return $this->compterCommandesActives($menuId) > 0;
+    }
+
+    /**
+     * @return array<int, int> menu_id => nombre de commandes actives
+     */
+    public function compterCommandesActivesParMenu(): array {
+        $stmt = $this->conn->query("
+            SELECT cm.menu_id, COUNT(*) AS nb
+            FROM commande_menu cm
+            INNER JOIN Commande c ON c.numero_commande = cm.numero_commande
+            WHERE LOWER(TRIM(c.statut)) NOT IN ('terminee', 'annulee', 'terminée', 'annulée')
+            GROUP BY cm.menu_id
+        ");
+        $map = [];
+        foreach ($stmt->fetchAll() ?: [] as $row) {
+            $map[(int) $row['menu_id']] = (int) $row['nb'];
+        }
+        return $map;
+    }
+
+    public function setVisible(int $menuId, bool $visible): void {
+        $stmt = $this->conn->prepare("UPDATE menu SET visible = :visible WHERE menu_id = :id");
+        $stmt->execute([
+            ':visible' => $visible ? 1 : 0,
+            ':id'      => $menuId,
+        ]);
+    }
+
+    public function compterPlats(int $menuId): int {
+        $stmt = $this->conn->prepare("SELECT COUNT(*) FROM contenu_menu WHERE menu_id = :id");
+        $stmt->execute([':id' => $menuId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /** @return array<int, int> menu_id => nombre de plats */
+    public function compterPlatsParMenu(): array {
+        $stmt = $this->conn->query("
+            SELECT menu_id, COUNT(*) AS nb
+            FROM contenu_menu
+            GROUP BY menu_id
+        ");
+        $map = [];
+        foreach ($stmt->fetchAll() ?: [] as $row) {
+            $map[(int) $row['menu_id']] = (int) $row['nb'];
+        }
+        return $map;
+    }
+
+    public function peutEtreVisible(int $menuId): bool {
+        return $this->compterPlats($menuId) >= self::MIN_PLATS_VISIBLE;
+    }
+
+    public function estVisible(int $menuId): bool {
+        $stmt = $this->conn->prepare("SELECT visible FROM menu WHERE menu_id = :id");
+        $stmt->execute([':id' => $menuId]);
+        $row = $stmt->fetch();
+        return $row && (int) ($row['visible'] ?? 0) === 1;
     }
 
     public function compterMenus(): int {
@@ -363,10 +608,28 @@ class MenuModel {
         return array_column($stmt->fetchAll() ?: [], 'allergene_id');
     }
 
-    public function creerPlat(string $titre): int {
-        $stmt = $this->conn->prepare("INSERT INTO plat (titre_plat) VALUES (:titre)");
-        $stmt->execute([':titre' => $titre]);
+    public function creerPlat(string $titre, ?string $image = null): int {
+        $stmt = $this->conn->prepare("INSERT INTO plat (titre_plat, image) VALUES (:titre, :image)");
+        $stmt->execute([
+            ':titre' => $titre,
+            ':image' => $image,
+        ]);
         return (int) $this->conn->lastInsertId();
+    }
+
+    /** @return string|null ancien chemin */
+    public function definirImagePlat(int $platId, string $image): ?string {
+        $stmt = $this->conn->prepare("SELECT image FROM plat WHERE plat_id = :id");
+        $stmt->execute([':id' => $platId]);
+        $ancien = $stmt->fetchColumn();
+        $ancien = $ancien !== false && $ancien !== null && $ancien !== '' ? (string) $ancien : null;
+
+        $upd = $this->conn->prepare("UPDATE plat SET image = :image WHERE plat_id = :id");
+        $upd->execute([':image' => $image, ':id' => $platId]);
+
+        $this->synchroniserGaleriePourPlat($platId);
+
+        return $ancien !== $image ? $ancien : null;
     }
 
     public function ajouterPlatAuMenu(int $menuId, int $platId): void {
@@ -374,11 +637,13 @@ class MenuModel {
             INSERT IGNORE INTO contenu_menu (menu_id, plat_id) VALUES (:menu_id, :plat_id)
         ");
         $stmt->execute([':menu_id' => $menuId, ':plat_id' => $platId]);
+        $this->synchroniserGalerieMenu($menuId);
     }
 
     public function retirerPlatDuMenu(int $menuId, int $platId): void {
         $stmt = $this->conn->prepare("DELETE FROM contenu_menu WHERE menu_id = :menu_id AND plat_id = :plat_id");
         $stmt->execute([':menu_id' => $menuId, ':plat_id' => $platId]);
+        $this->synchroniserGalerieMenu($menuId);
     }
 
     public function definirAllergenesPlat(int $platId, array $allergeneIds): void {

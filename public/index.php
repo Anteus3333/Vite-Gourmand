@@ -3,10 +3,16 @@
 session_start();
 
 // On utilise __DIR__ pour partir de /public, reculer d'un dossier (..), et aller dans /src
+$autoload = __DIR__ . '/../vendor/autoload.php';
+if (is_file($autoload)) {
+    require_once $autoload;
+}
+
 require_once __DIR__ . '/../src/Router.php';
 require_once __DIR__ . '/../src/Services/Csrf.php';
 require_once __DIR__ . '/../src/Services/AssetHelper.php';
 require_once __DIR__ . '/../src/Services/ViewHelper.php';
+require_once __DIR__ . '/../src/Services/UrlHelper.php';
 
 // Chemin de base du site (ex: "/Studi_ECF/public" en local, "" avec un virtual host).
 // Permet de générer des liens corrects quel que soit le dossier d'installation.

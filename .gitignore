@@ -1,9 +1,17 @@
 # Secrets et config locale (ne jamais committer)
-config/database.local.php
-config/mail.local.php
+config/*.local.php
+config/*.local.*.php
+!config/*.local.example.php
+
+# Dépendances PHP
+/vendor/
 
 # Logs locaux
 logs/
+
+# Archives / exports générés localement
+docs/archives/
+docs/parcours-export-print.html
 
 # Fichiers temporaires de migration / debug
 _migrate*.php
