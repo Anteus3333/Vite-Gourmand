@@ -9,9 +9,10 @@ config/*.local.*.php
 # Logs locaux
 logs/
 
-# Archives / exports générés localement
-docs/archives/
-docs/parcours-export-print.html
+# --- Docs : uniquement les PDF livrables (jury Studi) ---
+docs/**
+!docs/**/
+!docs/**/*.pdf
 
 # Fichiers temporaires de migration / debug
 _migrate*.php

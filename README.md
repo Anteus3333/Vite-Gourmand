@@ -196,7 +196,7 @@ Fichiers fournis dans `sql/` :
 | `/contact` | Contact |
 | Pages légales | Mentions, CGV, confidentialité, accessibilité |
 
-Cartographie détaillée : [`docs/PARCOURS-SITE.md`](docs/PARCOURS-SITE.md) / [`docs/PARCOURS-SITE.pdf`](docs/PARCOURS-SITE.pdf)
+Cartographie détaillée : [`docs/PARCOURS-SITE.pdf`](docs/PARCOURS-SITE.pdf)
 
 ---
 
@@ -258,15 +258,27 @@ Fichiers exclus (`.gitignore`) : `config/*.local.php`, `logs/`, `vendor/` selon 
 
 ## Déploiement
 
-- Guide générique : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
-- **Infomaniak** (prod) : [`docs/DEPLOIEMENT-INFOMANIAK.md`](docs/DEPLOIEMENT-INFOMANIAK.md)  
-  URL : https://vite-et-gourmand.anteusweb.com
+L’installation locale est décrite dans la section **Installation locale** ci-dessus  
+(DocumentRoot = dossier `public/`).
+
+**Production :** Infomaniak — https://vite-et-gourmand.anteusweb.com  
+(configuration `database.local.php` / `mail.local.php` sur le serveur, hors dépôt).
 
 ---
 
-## Documentation du rapport
+## Documentation du rapport (PDF)
 
-Le dossier [`docs/rapport/`](docs/rapport/) regroupe le plan et les chapitres du livrable ECF (manuel utilisateur, charte graphique, gestion de projet, doc technique).
+Livrables ECF versionnés dans `docs/` (PDF uniquement) :
+
+| Document | Fichier |
+|----------|---------|
+| Manuel d’utilisation | [`docs/rapport/01-manuel-utilisateur.pdf`](docs/rapport/01-manuel-utilisateur.pdf) |
+| Organigramme des parcours | [`docs/PARCOURS-SITE.pdf`](docs/PARCOURS-SITE.pdf) |
+| Charte graphique | `docs/rapport/02-charte-graphique.pdf` *(à venir)* |
+| Gestion de projet | `docs/rapport/03-gestion-de-projet.pdf` *(à venir)* |
+| Documentation technique | `docs/rapport/04-documentation-technique.pdf` *(à venir)* |
+
+Les brouillons Markdown / captures / scripts restent en local (non versionnés).
 
 ---
 

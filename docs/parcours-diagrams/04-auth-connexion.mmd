@@ -1,8 +1,0 @@
-flowchart TD
-    L1["/login"] --> L2{"Identifiants OK ?"}
-    L2 -->|Non| L1
-    L2 -->|Oui| L3{"Role utilisateur"}
-    L3 -->|Client| MC["/mon-compte ou page demandee"]
-    L3 -->|Employe| EE["/espace-employe"]
-    L3 -->|Administrateur| AD["/admin"]
-    DECO["POST /deconnexion"] --> ACC["Retour accueil /"]
