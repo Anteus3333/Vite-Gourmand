@@ -164,7 +164,7 @@ Vite-Gourmand/
 ├── config/
 ├── sql/                    # schema + fixtures + migrations
 ├── docs/                   # Déploiement, parcours, rapport ECF
-├── scripts/                # Migrations, optimisation images, sync Mongo
+├── scripts/                # sync_stats_mongo.php (stats admin Mongo)
 ├── composer.json
 └── README.md
 ```
@@ -284,9 +284,9 @@ Les brouillons Markdown / captures / scripts restent en local (non versionnés).
 
 ## Scripts utiles
 
+Synchronisation des statistiques MySQL → MongoDB (admin) :
+
 ```bash
-php scripts/run_migration.php chemin/vers/fichier.sql
-php scripts/optimize-images.php
 php scripts/sync_stats_mongo.php
 ```
 

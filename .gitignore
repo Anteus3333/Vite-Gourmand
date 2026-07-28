@@ -14,9 +14,9 @@ docs/**
 !docs/**/
 !docs/**/*.pdf
 
-# Fichiers temporaires de migration / debug
-_migrate*.php
-_extract_*.php
+# --- Scripts : seul le sync Mongo est versionné ---
+scripts/**
+!scripts/sync_stats_mongo.php
 
 # OS / IDE
 .DS_Store
