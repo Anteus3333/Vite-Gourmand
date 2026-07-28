@@ -9,10 +9,10 @@ config/*.local.*.php
 # Logs locaux
 logs/
 
-# --- Docs : uniquement les PDF livrables (jury Studi) ---
+# --- Docs : uniquement les PDF livrables dans docs/rapport/ ---
 docs/**
-!docs/**/
-!docs/**/*.pdf
+!docs/rapport/
+!docs/rapport/*.pdf
 
 # --- Scripts : seul le sync Mongo est versionné ---
 scripts/**

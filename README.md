@@ -196,7 +196,7 @@ Fichiers fournis dans `sql/` :
 | `/contact` | Contact |
 | Pages légales | Mentions, CGV, confidentialité, accessibilité |
 
-Cartographie détaillée : [`docs/PARCOURS-SITE.pdf`](docs/PARCOURS-SITE.pdf)
+Cartographie des parcours : voir le manuel d’utilisation PDF.
 
 ---
 
@@ -273,7 +273,6 @@ Livrables ECF versionnés dans `docs/` (PDF uniquement) :
 | Document | Fichier |
 |----------|---------|
 | Manuel d’utilisation | [`docs/rapport/01-manuel-utilisateur.pdf`](docs/rapport/01-manuel-utilisateur.pdf) |
-| Organigramme des parcours | [`docs/PARCOURS-SITE.pdf`](docs/PARCOURS-SITE.pdf) |
 | Charte graphique | `docs/rapport/02-charte-graphique.pdf` *(à venir)* |
 | Gestion de projet | `docs/rapport/03-gestion-de-projet.pdf` *(à venir)* |
 | Documentation technique | `docs/rapport/04-documentation-technique.pdf` *(à venir)* |
