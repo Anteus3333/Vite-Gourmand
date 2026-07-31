@@ -23,9 +23,17 @@ $menuActif = $menuSelectionne;
                 </div>
             <?php endif; ?>
 
-            <form method="post" action="<?= BASE_URL ?>/commande" class="commande-form" id="commande-form">
+            <form method="post" action="<?= BASE_URL ?>/commande"
+                  class="commande-form commande-form--with-recap"
+                  id="commande-form"
+                  data-abandon-guard
+                  data-abandon-titre="Commande en cours"
+                  data-abandon-message="Vous quittez une commande en cours. Les informations saisies seront perdues. Êtes-vous sûr ?"
+                  data-abandon-ok="Quitter"
+                  data-abandon-cancel="Rester">
                 <?= Csrf::champ() ?>
 
+                <div class="commande-fields">
                 <fieldset class="commande-fieldset">
                     <legend>Vos coordonnées</legend>
 
@@ -133,7 +141,20 @@ $menuActif = $menuSelectionne;
                         <small class="aide" id="minimum-hint"></small>
                     </div>
                 </fieldset>
+                </div>
 
+                <aside class="commande-recap" id="commande-recap" aria-label="Récapitulatif de la commande">
+                    <h2>Récapitulatif</h2>
+                    <div id="recap-content">
+                        <?php if ($tarifAffiche && $menuActif): ?>
+                            <?php require __DIR__ . '/partials/commande-recap.php'; ?>
+                        <?php else: ?>
+                            <p class="recap-placeholder">Sélectionnez un menu pour voir le détail du prix.</p>
+                        <?php endif; ?>
+                    </div>
+                </aside>
+
+                <div class="commande-validate">
                 <div class="conditions-box" id="conditions-box" hidden>
                     <h3>Conditions du menu sélectionné</h3>
                     <p id="conditions-text"></p>
@@ -155,19 +176,9 @@ $menuActif = $menuSelectionne;
                 <?php endif; ?>
 
                 <button type="submit" class="btn btn-submit">Valider ma commande</button>
+                </div>
             </form>
         </div>
-
-        <aside class="commande-recap" id="commande-recap">
-            <h2>Récapitulatif</h2>
-            <div id="recap-content">
-                <?php if ($tarifAffiche && $menuActif): ?>
-                    <?php require __DIR__ . '/partials/commande-recap.php'; ?>
-                <?php else: ?>
-                    <p class="recap-placeholder">Sélectionnez un menu pour voir le détail du prix.</p>
-                <?php endif; ?>
-            </div>
-        </aside>
 
     </div>
 </section>

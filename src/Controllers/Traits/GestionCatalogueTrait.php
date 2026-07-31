@@ -313,7 +313,7 @@ trait GestionCatalogueTrait {
                     ];
                 }
                 $this->horaireModel->enregistrer($lignes);
-                $_SESSION['flash_succes'] = 'Horaires mis à jour (visibles dans le pied de page).';
+                $_SESSION['flash_succes'] = 'Horaires mis à jour (pied de page et page Contact).';
                 header('Location: ' . $this->gestionBaseUrl() . '/horaires');
                 exit;
             }

@@ -25,7 +25,7 @@ ob_start();
             <li><strong>Commande</strong> : informations de livraison, dates, menu choisi, nombre de personnes, montants calculés</li>
             <li><strong>Contact</strong> : titre, adresse e-mail et contenu du message</li>
             <li><strong>Avis</strong> : note et commentaire liés à une commande terminée</li>
-            <li><strong>Technique</strong> : données de session (connexion, sécurité CSRF) et, le cas échéant, adresse IP pour la limitation des tentatives de connexion</li>
+            <li><strong>Technique</strong> : données de session (connexion, sécurité CSRF), jeton Cloudflare Turnstile le cas échéant, et adresse IP pour la limitation des tentatives de connexion / du formulaire de contact</li>
         </ul>
 
         <h2>3. Finalités et bases légales</h2>
@@ -97,6 +97,7 @@ ob_start();
         <p>
             Nous mettons en œuvre des mesures adaptées : mots de passe hashés (bcrypt),
             protection CSRF, sessions serveur, limitation des tentatives de connexion,
+            Cloudflare Turnstile sur le formulaire de contact,
             et accès restreint aux espaces employé / administrateur.
         </p>
 

@@ -31,6 +31,32 @@ class TentativeConnexionModel {
         return (int) $stmt->fetch()['nb'];
     }
 
+    /** Compte les envois récents d'un formulaire (email marqueur + IP) */
+    public function compterExact(string $email, string $ip, ?int $fenetreMinutes = null): int {
+        $fenetre = max(1, $fenetreMinutes ?? self::FENETRE_MINUTES);
+        $stmt = $this->conn->prepare("
+            SELECT COUNT(*) AS nb
+            FROM tentative_connexion
+            WHERE email = :email AND ip = :ip
+            AND date_tentative > DATE_SUB(NOW(), INTERVAL {$fenetre} MINUTE)
+        ");
+        $stmt->execute([':email' => $email, ':ip' => $ip]);
+        return (int) $stmt->fetch()['nb'];
+    }
+
+    /** Compte tous les envois d'un marqueur (toutes IP) — anti-flood global */
+    public function compterMarqueur(string $email, int $fenetreMinutes): int {
+        $fenetre = max(1, $fenetreMinutes);
+        $stmt = $this->conn->prepare("
+            SELECT COUNT(*) AS nb
+            FROM tentative_connexion
+            WHERE email = :email
+            AND date_tentative > DATE_SUB(NOW(), INTERVAL {$fenetre} MINUTE)
+        ");
+        $stmt->execute([':email' => $email]);
+        return (int) $stmt->fetch()['nb'];
+    }
+
     // Enregistre un échec de connexion
     public function enregistrer(string $email, string $ip): void {
         $stmt = $this->conn->prepare("INSERT INTO tentative_connexion (email, ip) VALUES (:email, :ip)");

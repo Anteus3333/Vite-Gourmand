@@ -100,5 +100,6 @@
     <script src="<?= BASE_URL ?>/js/main.js?v=<?= $jsVersion ?>"></script>
     <?php $pickersVersion = @filemtime(__DIR__ . '/../../public/js/pickers.js') ?: time(); ?>
     <script src="<?= BASE_URL ?>/js/pickers.js?v=<?= $pickersVersion ?>"></script>
+    <?= $scriptsFooter ?? '' ?>
 </body>
 </html>

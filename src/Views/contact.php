@@ -32,6 +32,19 @@ ob_start();
             <form method="post" action="<?= BASE_URL ?>/contact" class="contact-form">
                 <?= Csrf::champ() ?>
 
+                <?php /* Honeypot anti-bot — ne pas retirer */ ?>
+                <div class="champ-honeypot" aria-hidden="true">
+                    <label for="website">Site web</label>
+                    <input
+                        type="text"
+                        id="website"
+                        name="website"
+                        value=""
+                        tabindex="-1"
+                        autocomplete="off"
+                    >
+                </div>
+
                 <div class="champ">
                     <label for="titre">Titre de votre demande <span class="required">*</span></label>
                     <input
@@ -73,9 +86,18 @@ ob_start();
                     <small class="aide">Minimum 10 caractères, maximum 2000</small>
                 </div>
 
+                <?php if (!empty($turnstileActif)): ?>
+                <div class="champ champ-turnstile">
+                    <div
+                        class="cf-turnstile"
+                        data-sitekey="<?= htmlspecialchars($turnstileSiteKey) ?>"
+                        data-theme="light"
+                    ></div>
+                </div>
+                <?php endif; ?>
+
                 <div class="contact-actions">
                     <button type="submit" class="btn btn-submit">Envoyer mon message</button>
-                    <?= ViewHelper::btnNav(BASE_URL . '/', 'Annuler', 'btn btn-outline') ?>
                 </div>
             </form>
         </div>
@@ -96,8 +118,9 @@ ob_start();
                 <p>Nous serons ravis d'échanger avec vous directement lors de nos horaires d'ouverture.</p>
                 <p class="contact-detail">
                     <a href="tel:+33615239439">06 15 23 94 39</a><br>
-                    Du lundi au dimanche<br>
-                    11h00 – 14h30 · 18h30 – 23h00
+                    <?php foreach ((array) ($resumeHoraires ?? []) as $i => $ligneHoraire): ?>
+                        <?= $i > 0 ? '<br>' : '' ?><?= htmlspecialchars($ligneHoraire) ?>
+                    <?php endforeach; ?>
                 </p>
             </div>
 
@@ -118,4 +141,8 @@ ob_start();
 
 <?php
 $contenuPage = ob_get_clean();
+$scriptsFooter = '';
+if (!empty($turnstileActif)) {
+    $scriptsFooter = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>';
+}
 require_once __DIR__ . '/layout.php';

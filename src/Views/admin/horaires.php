@@ -5,7 +5,7 @@ $gestionNavFile = $gestionNavFile ?? __DIR__ . '/_nav.php';
 
 <section class="compte-hero admin-hero compte-hero-compact">
     <h1>Horaires d'ouverture</h1>
-    <p>Modifiez les horaires affichés dans le pied de page du site.</p>
+    <p>Modifiez les horaires affichés dans le pied de page et sur la page Contact.</p>
 </section>
 
 <section class="compte-page">

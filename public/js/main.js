@@ -43,6 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-navigate]');
         if (!btn) return;
+        // Laisser le garde d’abandon (plus bas) intercepter si un formulaire est sale
+        if (document.querySelector('form[data-abandon-guard][data-abandon-dirty="1"], form[data-abandon-watch][data-abandon-dirty="1"]')) {
+            return;
+        }
         window.location.href = btn.dataset.navigate;
     });
 
@@ -102,9 +106,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnOk = overlay.querySelector('[data-confirm-ok]');
         const btnCancel = overlay.querySelector('[data-confirm-cancel]');
 
+        if (options.cancelLabel) {
+            btnCancel.textContent = options.cancelLabel;
+        }
+        if (options.okLabel) {
+            btnOk.textContent = options.okLabel;
+        }
+
         if (isBlock) {
             btnOk.remove();
-            btnCancel.textContent = 'Fermer';
+            btnCancel.textContent = options.cancelLabel || 'Fermer';
             btnCancel.className = 'btn modal-ok';
             btnCancel.addEventListener('click', fermerModaleConfirm);
             btnCancel.focus();
@@ -117,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     onConfirm();
                 }
             });
-            btnOk.focus();
+            (options.focusCancel ? btnCancel : btnOk).focus();
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) fermerModaleConfirm();
             });
@@ -370,15 +381,27 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        function messageForLeave() {
+        function dirtySource() {
             const form = formGuards.find(isFormDirty);
             if (form) {
-                return form.getAttribute('data-abandon-message')
-                    || 'Des modifications non enregistrées seront perdues. Quitter ?';
+                return form;
             }
-            const page = pages.find((p) => anyDirty(Array.from(p.querySelectorAll('form[data-abandon-watch]'))));
-            if (page) {
-                return page.getAttribute('data-abandon-message')
+            return pages.find((p) => anyDirty(Array.from(p.querySelectorAll('form[data-abandon-watch]')))) || null;
+        }
+
+        function optionsForLeave() {
+            const source = dirtySource();
+            return {
+                titre: source?.getAttribute('data-abandon-titre') || 'Confirmation',
+                okLabel: source?.getAttribute('data-abandon-ok') || 'Confirmer',
+                cancelLabel: source?.getAttribute('data-abandon-cancel') || 'Annuler',
+            };
+        }
+
+        function messageForLeave() {
+            const source = dirtySource();
+            if (source) {
+                return source.getAttribute('data-abandon-message')
                     || 'Des modifications non enregistrées seront perdues. Quitter ?';
             }
             return 'Des modifications non enregistrées seront perdues. Quitter ?';
@@ -386,6 +409,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function pageIsDirty() {
             return anyDirty(formGuards) || anyDirty(pageForms);
+        }
+
+        function confirmerDepart(url) {
+            ouvrirModaleConfirm(messageForLeave(), () => {
+                formGuards.forEach(markClean);
+                pageForms.forEach(markClean);
+                window.location.href = url;
+            }, { ...optionsForLeave(), focusCancel: true });
         }
 
         window.addEventListener('beforeunload', (e) => {
@@ -397,8 +428,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.addEventListener('click', (e) => {
+            if (!pageIsDirty()) {
+                return;
+            }
+
+            const navBtn = e.target.closest('[data-navigate]');
+            if (navBtn) {
+                const url = navBtn.getAttribute('data-navigate') || '';
+                if (!url) {
+                    return;
+                }
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                confirmerDepart(url);
+                return;
+            }
+
             const link = e.target.closest('a[href]');
-            if (!link || !pageIsDirty()) {
+            if (!link) {
                 return;
             }
             const href = link.getAttribute('href') || '';
@@ -411,11 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             e.preventDefault();
-            ouvrirModaleConfirm(messageForLeave(), () => {
-                formGuards.forEach(markClean);
-                pageForms.forEach(markClean);
-                window.location.href = link.href;
-            });
-        });
+            confirmerDepart(link.href);
+        }, true);
     })();
 });

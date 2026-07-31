@@ -21,7 +21,14 @@ $numeroEnc = urlencode($commande['numero_commande']);
 
             <p class="compte-info">Menu commandé : <strong><?= htmlspecialchars($commande['menu_titre']) ?></strong> — le choix du menu ne peut pas être modifié (ECF).</p>
 
-            <form method="post" class="commande-form" id="commande-modif-form" data-base-url="<?= BASE_URL ?>" data-menu-id="<?= (int) $commande['menu_id'] ?>">
+            <form method="post" class="commande-form" id="commande-modif-form"
+                  data-base-url="<?= BASE_URL ?>"
+                  data-menu-id="<?= (int) $commande['menu_id'] ?>"
+                  data-abandon-guard
+                  data-abandon-titre="Modification en cours"
+                  data-abandon-message="Vous quittez la modification de commande. Les changements non enregistrés seront perdus. Êtes-vous sûr ?"
+                  data-abandon-ok="Quitter"
+                  data-abandon-cancel="Rester">
                 <?= Csrf::champ() ?>
 
                 <div class="champ">

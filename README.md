@@ -119,6 +119,7 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 | `config/mail.php` + `mail.local.php` | SMTP / simulation |
 | `config/commande.php` | Tarifs livraison, délais, workflow statuts |
 | `config/mongodb.php` + `mongodb.local.php` | Stats Mongo (optionnel) |
+| `config/turnstile.php` + `turnstile.local.php` | Cloudflare Turnstile (anti-spam contact, optionnel) |
 
 > **Ne jamais versionner** les fichiers `*.local.php` (secrets).
 
@@ -228,6 +229,7 @@ Cartographie des parcours : voir le manuel d’utilisation PDF.
 - Limitation des **tentatives de connexion**
 - Contrôle d’accès par rôle (**AuthGuard**)
 - Upload images contrôlé (MIME, taille, ré-encodage GD)
+- Formulaire contact : honeypot, rate-limit, **Cloudflare Turnstile** (si activé)
 
 ---
 
