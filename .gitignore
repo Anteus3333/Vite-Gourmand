@@ -9,10 +9,13 @@ config/*.local.*.php
 # Logs locaux
 logs/
 
-# --- Docs : uniquement les PDF livrables dans docs/rapport/ ---
+# --- Docs : uniquement les PDF livrables sous docs/rapport_ECF/ ---
 docs/**
-!docs/rapport/
-!docs/rapport/*.pdf
+!docs/rapport_ECF/
+!docs/rapport_ECF/**
+# Ne pas versionner les extractions / brouillons locaux dans ce dossier
+docs/rapport_ECF/**/*_extract.txt
+docs/rapport_ECF/**/_audit.txt
 
 # --- Scripts : seul le sync Mongo est versionné ---
 scripts/**
