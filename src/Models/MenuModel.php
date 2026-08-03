@@ -1,7 +1,7 @@
 <?php
 // src/Models/MenuModel.php
 
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Services/SqlDatabase.php';
 
 class MenuModel {
     /** Nombre minimal de plats pour pouvoir publier un menu. */
@@ -10,7 +10,7 @@ class MenuModel {
     private $conn;
 
     public function __construct() {
-        $database = new Database();
+        $database = new SqlDatabase();
         $this->conn = $database->getConnection();
     }
 

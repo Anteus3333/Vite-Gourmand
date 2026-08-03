@@ -8,7 +8,7 @@ ob_start();
 </section>
 
 <section class="compte-page">
-    <?php require __DIR__ . '/_nav.php'; ?>
+    <?php require __DIR__ . '/cpte__nav.php'; ?>
 
     <?php if (!empty($commandesEligibles)): ?>
         <div class="compte-card compte-card-wide avis-eligibles">

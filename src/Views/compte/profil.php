@@ -10,7 +10,7 @@ $erreursMdp = $erreursMdp ?? [];
 </section>
 
 <section class="compte-page">
-    <?php require __DIR__ . '/_nav.php'; ?>
+    <?php require __DIR__ . '/cpte__nav.php'; ?>
 
     <div class="profil-layout">
         <div class="compte-card profil-card">

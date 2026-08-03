@@ -44,6 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatEuro(n) { return parseFloat(n).toFixed(2).replace('.', ',') + ' €'; }
 
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
     function recalculer() {
         const params = new URLSearchParams({
             menu_id: menuId,
@@ -59,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const t = data.tarif;
                 recapContent.innerHTML = `
                     <dl class="recap-list">
-                        <div><dt>Menu</dt><dd>${data.menu.titre}</dd></div>
+                        <div><dt>Menu</dt><dd>${escapeHtml(data.menu.titre)}</dd></div>
                         <div><dt>Personnes</dt><dd>${t.nombre_personne}</dd></div>
                         <div><dt>Sous-total</dt><dd>${formatEuro(t.sous_total)}</dd></div>
                         ${t.reduction_appliquee ? `<div class="recap-reduction"><dt>Réduction -10 %</dt><dd>-${formatEuro(t.reduction)}</dd></div>` : ''}

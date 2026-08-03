@@ -1,5 +1,5 @@
 <?php
-// config/commande.php — règles métier de la commande (ECF)
+// config/commandeconfig.php — règles métier de la commande (ECF)
 
 return [
     // Livraison : 5 € + 0,59 €/km hors Bordeaux

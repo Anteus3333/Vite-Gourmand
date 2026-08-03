@@ -102,7 +102,7 @@ return [
 ### 5. E-mails (optionnel)
 
 Par défaut, les e-mails sont **simulés** dans `logs/mails/`.  
-Pour un envoi réel (Gmail SMTP), créer `config/mail.local.php` à partir des réglages de `config/mail.php` (mot de passe d’application Google).
+Pour un envoi réel (Gmail SMTP), créer `config/gmail.local.php` à partir des réglages de `config/gmail.php` (mot de passe d’application Google).
 
 ### 6. MongoDB (optionnel — stats admin)
 
@@ -115,9 +115,11 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 
 | Fichier | Rôle |
 |---------|------|
-| `config/database.php` + `database.local.php` | Connexion MySQL |
-| `config/mail.php` + `mail.local.php` | SMTP / simulation |
-| `config/commande.php` | Tarifs livraison, délais, workflow statuts |
+| `config/database.php` + `database.local.php` | Paramètres MySQL |
+| `src/Services/SqlDatabase.php` | Connexion PDO MySQL |
+| `config/gmail.php` + `gmail.local.php` | SMTP Gmail / simulation |
+| `src/Services/GmailMailer.php` | Envoi des e-mails |
+| `config/commandeconfig.php` | Tarifs livraison, délais, workflow statuts |
 | `config/mongodb.php` + `mongodb.local.php` | Stats Mongo (optionnel) |
 | `config/turnstile.php` + `turnstile.local.php` | Cloudflare Turnstile (anti-spam contact, optionnel) |
 
@@ -160,7 +162,7 @@ Vite-Gourmand/
 │   ├── Controllers/        # Auth, Menu, Commande, Compte, Employé, Admin…
 │   ├── Models/             # Accès BDD (PDO)
 │   ├── Views/              # Templates PHP
-│   ├── Services/           # Mailer, CSRF, AuthGuard, upload images, Mongo…
+│   ├── Services/           # GmailMailer, CSRF, AuthGuard, upload images, Mongo…
 │   └── Router.php
 ├── config/
 ├── sql/                    # schema + fixtures + migrations
@@ -236,7 +238,7 @@ Cartographie des parcours : voir le manuel d’utilisation PDF.
 ## E-mails
 
 Sans SMTP : archivage dans `logs/mails/`.  
-Avec Gmail SMTP (`mail.local.php`) : envoi réel.
+Avec Gmail SMTP (`gmail.local.php`) : envoi réel.
 
 Déclencheurs : confirmation d’inscription, bienvenue, commande, reset MDP, contact, avis, notifications employé / matériel.
 
@@ -264,7 +266,7 @@ L’installation locale est décrite dans la section **Installation locale** ci-
 (DocumentRoot = dossier `public/`).
 
 **Production :** Infomaniak — https://vite-et-gourmand.anteusweb.com  
-(configuration `database.local.php` / `mail.local.php` sur le serveur, hors dépôt).
+(configuration `database.local.php` / `gmail.local.php` sur le serveur, hors dépôt).
 
 ---
 

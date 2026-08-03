@@ -1,14 +1,16 @@
 <?php
-// src/Services/Mailer.php
+// src/Services/GmailMailer.php — envoi d'e-mails via SMTP Gmail (ou mail() PHP)
 
-class Mailer {
+require_once __DIR__ . '/UrlHelper.php';
+
+class GmailMailer {
     private array $config;
 
     public function __construct() {
-        $this->config = require __DIR__ . '/../../config/mail.php';
+        $this->config = require __DIR__ . '/../../config/gmail.php';
 
         // Surcharge locale optionnelle (identifiants SMTP Gmail)
-        $local = __DIR__ . '/../../config/mail.local.php';
+        $local = __DIR__ . '/../../config/gmail.local.php';
         if (is_file($local)) {
             $override = require $local;
             $this->config = array_replace_recursive($this->config, $override);
@@ -17,7 +19,7 @@ class Mailer {
 
     /**
      * Envoie un mail texte ou HTML.
-     * - Si SMTP est activé (mail.local.php), envoi réel via Gmail.
+     * - Si SMTP est activé (gmail.local.php), envoi réel via Gmail.
      * - Sinon, tentative via mail() PHP.
      * Une copie est toujours archivée dans logs/mails/ (utile en local).
      *
@@ -183,6 +185,54 @@ class Mailer {
         file_put_contents(
             $fichier,
             "Statut : {$statut}\nÀ      : {$destinataire}\nSujet  : {$sujet}\n\n{$message}"
+        );
+
+        $this->purgerArchivesAnciennes($dossier);
+    }
+
+    /** Supprime les archives de mails de plus de 7 jours. */
+    private function purgerArchivesAnciennes(string $dossier, int $joursRetention = 7): void {
+        $limite = time() - ($joursRetention * 86400);
+        foreach (glob($dossier . '/*.txt') ?: [] as $fichier) {
+            $mtime = @filemtime($fichier);
+            if ($mtime !== false && $mtime < $limite) {
+                @unlink($fichier);
+            }
+        }
+    }
+
+    /**
+     * Alerte sécurité après changement / réinitialisation du mot de passe.
+     *
+     * @param array{email?:string,prenom?:string} $utilisateur
+     */
+    public function envoyerAlerteMotDePasseModifie(array $utilisateur): bool {
+        $email = trim($utilisateur['email'] ?? '');
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $prenom = trim($utilisateur['prenom'] ?? '');
+        $date   = date('d/m/Y à H:i');
+        $salut  = $prenom !== '' ? htmlspecialchars($prenom) : '';
+
+        $html = '<p>Bonjour' . ($salut !== '' ? ' ' . $salut : '') . ',</p>'
+            . '<p>Nous vous confirmons que le mot de passe de votre compte Vite et Gourmand '
+            . 'a été modifié le ' . htmlspecialchars($date) . '.</p>'
+            . '<p>Si vous êtes à l\'origine de cette modification, aucune action n\'est nécessaire.</p>'
+            . '<p>Si vous n\'êtes pas à l\'origine de ce changement, sécurisez immédiatement votre compte :</p>'
+            . '<ul>'
+            . '<li>' . UrlHelper::ancre('/mot-de-passe-oublie', 'Réinitialiser votre mot de passe') . '</li>'
+            . '<li>' . UrlHelper::ancre('/contact', 'Nous contacter') . '</li>'
+            . '</ul>'
+            . '<p>L\'équipe Vite et Gourmand</p>';
+
+        return $this->send(
+            $email,
+            'Modification de votre mot de passe — Vite et Gourmand',
+            $html,
+            null,
+            true
         );
     }
 }

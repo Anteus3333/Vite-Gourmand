@@ -1,16 +1,16 @@
 <?php
 // src/Models/CommandeModel.php
 
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Services/SqlDatabase.php';
 
 class CommandeModel {
     private $conn;
     private array $config;
 
     public function __construct() {
-        $database = new Database();
+        $database = new SqlDatabase();
         $this->conn = $database->getConnection();
-        $this->config = require __DIR__ . '/../../config/commande.php';
+        $this->config = require __DIR__ . '/../../config/commandeconfig.php';
     }
 
     public function genererNumero(): string {

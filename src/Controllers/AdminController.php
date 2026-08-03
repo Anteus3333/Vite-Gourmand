@@ -7,9 +7,6 @@ require_once __DIR__ . '/../Models/CommandeModel.php';
 require_once __DIR__ . '/../Models/AvisModel.php';
 require_once __DIR__ . '/../Models/UtilisateurModel.php';
 require_once __DIR__ . '/../Services/AuthGuard.php';
-require_once __DIR__ . '/../Services/Csrf.php';
-require_once __DIR__ . '/../Services/Mailer.php';
-require_once __DIR__ . '/../Services/StatsMongoService.php';
 require_once __DIR__ . '/Traits/GestionCatalogueTrait.php';
 require_once __DIR__ . '/Traits/GestionCommandesAvisTrait.php';
 
@@ -405,7 +402,7 @@ class AdminController {
             . '<p>Vous pourrez gérer les commandes, les menus, les horaires et modérer les avis clients.</p>'
             . '<p>L\'équipe Vite et Gourmand</p>';
 
-        (new Mailer())->send(
+        (new GmailMailer())->send(
             $employe['email'],
             'Votre compte employé — Vite et Gourmand',
             $html,

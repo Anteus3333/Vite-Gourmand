@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/../Models/UtilisateurModel.php';
 require_once __DIR__ . '/../Models/TentativeConnexionModel.php';
-require_once __DIR__ . '/../Services/Mailer.php';
+require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 
 class AuthController {
@@ -158,7 +158,7 @@ class AuthController {
             $redirect = match ($role) {
                 'administrateur' => '/admin',
                 'employe'        => '/espace-employe',
-                default          => '/',
+                default          => '/menus',
             };
         }
         header('Location: ' . BASE_URL . $redirect);
@@ -232,7 +232,7 @@ class AuthController {
                     . '<p>Si vous n\'êtes pas à l\'origine de cette demande, ignorez simplement ce mail.</p>'
                     . '<p>Julie et José</p>';
 
-                (new Mailer())->send(
+                (new GmailMailer())->send(
                     $email,
                     "Réinitialisation de votre mot de passe - Vite & Gourmand",
                     $html,
@@ -281,7 +281,10 @@ class AuthController {
 
             if (empty($erreurs)) {
                 $this->model->updatePassword((int) $utilisateur['utilisateur_id'], $password);
-                $_SESSION['flash_succes'] = "Votre mot de passe a bien été modifié. Vous pouvez vous connecter.";
+                $mailOk = (new GmailMailer())->envoyerAlerteMotDePasseModifie($utilisateur);
+                $_SESSION['flash_succes'] = $mailOk
+                    ? 'Votre mot de passe a bien été modifié. Un e-mail de confirmation vous a été envoyé. Vous pouvez vous connecter.'
+                    : 'Votre mot de passe a bien été modifié. Vous pouvez vous connecter. (L\'e-mail de confirmation n\'a pas pu être envoyé.)';
                 header('Location: ' . BASE_URL . '/login');
                 exit;
             }
@@ -305,7 +308,7 @@ class AuthController {
 
         $this->model->confirmerEmail((int) $utilisateur['utilisateur_id']);
 
-        (new Mailer())->send(
+        (new GmailMailer())->send(
             $utilisateur['email'],
             'Bienvenue chez Vite & Gourmand !',
             '<p>Bonjour ' . htmlspecialchars($utilisateur['prenom']) . ',</p>'
@@ -336,7 +339,7 @@ class AuthController {
             . 'Si vous n\'êtes pas à l\'origine de cette inscription, ignorez ce message.</p>'
             . '<p>À bientôt,<br>Julie et José</p>';
 
-        (new Mailer())->send(
+        (new GmailMailer())->send(
             $email,
             'Confirmez votre adresse e-mail — Vite & Gourmand',
             $html,

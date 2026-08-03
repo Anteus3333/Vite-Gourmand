@@ -4,6 +4,9 @@ session_start();
 
 // On utilise __DIR__ pour partir de /public, reculer d'un dossier (..), et aller dans /src
 $autoload = __DIR__ . '/../vendor/autoload.php';
+// On charge le fichier autoload.php pour charger les classes automatiquement
+// Si le fichier n'existe pas, on affiche un message d'erreur
+// Dans le cas présent, si MongoDB n'est pas installé
 if (is_file($autoload)) {
     require_once $autoload;
 }

@@ -8,8 +8,7 @@ require_once __DIR__ . '/../Models/AvisModel.php';
 require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/Csrf.php';
-require_once __DIR__ . '/../Services/Mailer.php';
-require_once __DIR__ . '/../Services/UrlHelper.php';
+require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/StatsMongoService.php';
 
 class CompteController {
@@ -46,7 +45,7 @@ class CompteController {
         $commandes = $this->commandeModel->getByUtilisateur($this->userId());
         $commandeModel = $this->commandeModel;
         $titrePage = 'Mes commandes - Vite et Gourmand';
-        require __DIR__ . '/../Views/compte/commandes.php';
+        require __DIR__ . '/../Views/compte/cpte_commandes.php';
     }
 
     /** Détail d'une commande + timeline de suivi */
@@ -63,7 +62,7 @@ class CompteController {
         $avisCommande = $this->avisModel->getPourCommande($numero, $this->userId());
         $commandeModel = $this->commandeModel;
         $titrePage = 'Commande ' . $numero;
-        require __DIR__ . '/../Views/compte/commande-detail.php';
+        require __DIR__ . '/../Views/compte/cpte_commande-detail.php';
     }
 
     /** Formulaire de modification (tout sauf le menu) */
@@ -272,7 +271,7 @@ class CompteController {
         }
 
         $this->userModel->updatePassword($this->userId(), $nouveau);
-        $mailOk = $this->envoyerMailMotDePasseModifie($utilisateur);
+        $mailOk = (new GmailMailer())->envoyerAlerteMotDePasseModifie($utilisateur);
         $_SESSION['flash_succes'] = $mailOk
             ? 'Votre mot de passe a bien été modifié. Un e-mail de confirmation vous a été envoyé.'
             : 'Votre mot de passe a bien été modifié, mais l\'e-mail de confirmation n\'a pas pu être envoyé. Vérifiez vos spams ou contactez-nous.';
@@ -345,7 +344,7 @@ class CompteController {
         ];
 
         $titrePage = 'Mes avis - Vite et Gourmand';
-        require __DIR__ . '/../Views/compte/avis.php';
+        require __DIR__ . '/../Views/compte/cpte_avis.php';
     }
 
     /** Formulaire de dépôt d'avis sur une commande terminée */
@@ -447,35 +446,5 @@ class CompteController {
         if (!preg_match('/[0-9]/', $password))       $erreurs[] = 'Le mot de passe doit contenir au moins un chiffre.';
         if (!preg_match('/[^a-zA-Z0-9]/', $password)) $erreurs[] = 'Le mot de passe doit contenir au moins un caractère spécial.';
         return $erreurs;
-    }
-
-    private function envoyerMailMotDePasseModifie(array $utilisateur): bool {
-        $email = trim($utilisateur['email'] ?? '');
-        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
-
-        $prenom = trim($utilisateur['prenom'] ?? '');
-        $date   = date('d/m/Y à H:i');
-        $salut = $prenom !== '' ? htmlspecialchars($prenom) : '';
-
-        $html = '<p>Bonjour' . ($salut !== '' ? ' ' . $salut : '') . ',</p>'
-            . '<p>Nous vous confirmons que le mot de passe de votre compte Vite et Gourmand '
-            . 'a été modifié le ' . htmlspecialchars($date) . '.</p>'
-            . '<p>Si vous êtes à l\'origine de cette modification, aucune action n\'est nécessaire.</p>'
-            . '<p>Si vous n\'êtes pas à l\'origine de ce changement, sécurisez immédiatement votre compte :</p>'
-            . '<ul>'
-            . '<li>' . UrlHelper::ancre('/mot-de-passe-oublie', 'Réinitialiser votre mot de passe') . '</li>'
-            . '<li>' . UrlHelper::ancre('/contact', 'Nous contacter') . '</li>'
-            . '</ul>'
-            . '<p>L\'équipe Vite et Gourmand</p>';
-
-        return (new Mailer())->send(
-            $email,
-            'Modification de votre mot de passe — Vite et Gourmand',
-            $html,
-            null,
-            true
-        );
     }
 }

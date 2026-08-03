@@ -2,6 +2,7 @@
 // src/Controllers/Traits/GestionCatalogueTrait.php — menus, plats et horaires (admin + employé)
 
 require_once __DIR__ . '/../../Services/ImageUploadService.php';
+require_once __DIR__ . '/../../Services/Csrf.php';
 
 trait GestionCatalogueTrait {
 

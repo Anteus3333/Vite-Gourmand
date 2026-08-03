@@ -1,7 +1,7 @@
 <?php
 ob_start();
 $gestionBase = $gestionBase ?? (BASE_URL . '/espace-employe');
-$gestionNavFile = $gestionNavFile ?? __DIR__ . '/_nav.php';
+$gestionNavFile = $gestionNavFile ?? __DIR__ . '/emp__nav.php';
 
 $labelsAvis = [
     'en_attente' => 'En attente',

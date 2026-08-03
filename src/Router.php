@@ -20,6 +20,9 @@ class Router {
         // Logique de routage
         switch ($route) {
             case '':
+            // Nota, l'usage de la variable $controller est une bonne pratique 
+            // pour éviter les conflits de noms
+            // Mais sans comme après fait exactement pareil
             case 'accueil':
                 $controller = new HomeController();
                 $controller->index();
@@ -58,21 +61,26 @@ class Router {
             case 'menu':
                 if ($param && is_numeric($param)) {
                     (new MenuController())->detail((int)$param);
-                } else {
+                } 
+                else {
                     http_response_code(404);
                     echo "Erreur 404 : Menu non trouvé";
                 }
                 break;
 
             // --- APIs ---
+            // Pour les calculs de prix et de distance
             case 'api':
                 if ($param === 'filter-menus') {
                     (new MenuController())->filterAPI();
-                } elseif ($param === 'calcul-prix') {
+                } 
+                elseif ($param === 'calcul-prix') {
                     (new CommandeController())->calculPrixAPI();
-                } elseif ($param === 'calcul-distance') {
+                } 
+                elseif ($param === 'calcul-distance') {
                     (new CommandeController())->calculDistanceAPI();
-                } else {
+                } 
+                else {
                     http_response_code(404);
                     echo "Erreur 404 : API non trouvée";
                 }

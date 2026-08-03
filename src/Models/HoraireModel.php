@@ -1,13 +1,13 @@
 <?php
 // src/Models/HoraireModel.php
 
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Services/SqlDatabase.php';
 
 class HoraireModel {
     private $conn;
 
     public function __construct() {
-        $this->conn = (new Database())->getConnection();
+        $this->conn = (new SqlDatabase())->getConnection();
     }
 
     public function getAll(): array {

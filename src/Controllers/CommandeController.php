@@ -6,7 +6,7 @@ require_once __DIR__ . '/../Models/MenuModel.php';
 require_once __DIR__ . '/../Models/UtilisateurModel.php';
 require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
-require_once __DIR__ . '/../Services/Mailer.php';
+require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 require_once __DIR__ . '/../Services/StatsMongoService.php';
 
@@ -24,7 +24,7 @@ class CommandeController {
         $this->userModel       = new UtilisateurModel();
         $this->prixService     = new PrixCommandeService();
         $this->distanceService = new DistanceService();
-        $this->config          = require __DIR__ . '/../../config/commande.php';
+        $this->config          = require __DIR__ . '/../../config/commandeconfig.php';
     }
 
     /** Affiche le formulaire et traite la soumission */
@@ -266,7 +266,7 @@ class CommandeController {
             . '<p>' . UrlHelper::ancre($cheminCommande, 'Voir ma commande') . '</p>'
             . '<p>Julie et José — Vite &amp; Gourmand</p>';
 
-        (new Mailer())->send(
+        (new GmailMailer())->send(
             $client['email'],
             "Confirmation de commande {$numero} - Vite et Gourmand",
             $html,

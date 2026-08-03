@@ -1,7 +1,7 @@
 <?php
 // src/Controllers/ContactController.php
 
-require_once __DIR__ . '/../Services/Mailer.php';
+require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 require_once __DIR__ . '/../Services/TurnstileService.php';
 require_once __DIR__ . '/../Models/TentativeConnexionModel.php';
@@ -82,7 +82,7 @@ class ContactController {
             }
 
             if (empty($erreurs)) {
-                $mailer = new Mailer();
+                $mailer = new GmailMailer();
                 $suspect = $this->estSuspectLeger($old['titre'], $old['description'], $old['mail']);
 
                 $sujetEntreprise = "Nouveau message de contact - {$old['titre']}";
@@ -213,7 +213,7 @@ class ContactController {
         array $old,
         TurnstileService $turnstile
     ): void {
-        $emailContact = (new Mailer())->getContactEmail();
+        $emailContact = (new GmailMailer())->getContactEmail();
         $turnstileActif = $turnstile->estActif();
         $turnstileSiteKey = $turnstile->siteKey();
         $resumeHoraires = (new HoraireModel())->getResumeFooter();

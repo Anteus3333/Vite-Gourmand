@@ -6,8 +6,6 @@ require_once __DIR__ . '/../Models/AvisModel.php';
 require_once __DIR__ . '/../Models/MenuModel.php';
 require_once __DIR__ . '/../Models/HoraireModel.php';
 require_once __DIR__ . '/../Services/AuthGuard.php';
-require_once __DIR__ . '/../Services/Csrf.php';
-require_once __DIR__ . '/../Services/Mailer.php';
 require_once __DIR__ . '/Traits/GestionCatalogueTrait.php';
 require_once __DIR__ . '/Traits/GestionCommandesAvisTrait.php';
 
@@ -52,7 +50,7 @@ class EmployeController {
     }
 
     protected function gestionNavFile(): string {
-        return __DIR__ . '/../Views/employe/_nav.php';
+        return __DIR__ . '/../Views/employe/emp__nav.php';
     }
 
     protected function exigerGestionAcces(): void {

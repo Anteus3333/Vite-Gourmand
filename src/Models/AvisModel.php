@@ -2,13 +2,13 @@
 // src/Models/AvisModel.php
 
 // On inclut le fichier de connexion à la BDD
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Services/SqlDatabase.php';
 
 class AvisModel {
     private $conn;
 
     public function __construct() {
-        $database = new Database();
+        $database = new SqlDatabase();
         $this->conn = $database->getConnection();
     }
 

@@ -1,6 +1,11 @@
 <?php
 // src/Controllers/Traits/GestionCommandesAvisTrait.php — commandes et avis (admin + employé)
 
+require_once __DIR__ . '/../../Services/StatsMongoService.php';
+require_once __DIR__ . '/../../Services/UrlHelper.php';
+require_once __DIR__ . '/../../Services/Csrf.php';
+require_once __DIR__ . '/../../Services/GmailMailer.php';
+
 trait GestionCommandesAvisTrait {
 
     abstract protected function gestionBasePath(): string;
@@ -23,7 +28,7 @@ trait GestionCommandesAvisTrait {
         $gestionNavFile = $this->gestionNavFile();
 
         $titrePage = 'Gestion des commandes - ' . $this->gestionTitreEspace();
-        require __DIR__ . '/../../Views/employe/commandes.php';
+        require __DIR__ . '/../../Views/employe/emp_commandes.php';
     }
 
     /** Détail commande + actions */
@@ -47,7 +52,7 @@ trait GestionCommandesAvisTrait {
         $gestionNavFile = $this->gestionNavFile();
 
         $titrePage = 'Commande ' . $numero;
-        require __DIR__ . '/../../Views/employe/commande-detail.php';
+        require __DIR__ . '/../../Views/employe/emp_commande-detail.php';
     }
 
     /** Changement de statut (POST + CSRF) */
@@ -73,7 +78,6 @@ trait GestionCommandesAvisTrait {
 
             $docStats = $this->commandeModel->getPourStatsMongo($numero);
             if ($docStats) {
-                require_once __DIR__ . '/../../Services/StatsMongoService.php';
                 (new StatsMongoService())->enregistrerCommande($docStats);
             }
 
@@ -131,7 +135,6 @@ trait GestionCommandesAvisTrait {
 
             $docStats = $this->commandeModel->getPourStatsMongo($numero);
             if ($docStats) {
-                require_once __DIR__ . '/../../Services/StatsMongoService.php';
                 (new StatsMongoService())->enregistrerCommande($docStats);
             }
         } else {
@@ -178,7 +181,7 @@ trait GestionCommandesAvisTrait {
         $gestionNavFile = $this->gestionNavFile();
 
         $titrePage = 'Modération des avis - ' . $this->gestionTitreEspace();
-        require __DIR__ . '/../../Views/employe/avis.php';
+        require __DIR__ . '/../../Views/employe/emp_avis.php';
     }
 
     /** Valider un avis (POST) */
@@ -242,7 +245,7 @@ trait GestionCommandesAvisTrait {
             . '<p>Votre retour nous aide à améliorer nos prestations.</p>'
             . '<p>L\'équipe Vite et Gourmand</p>';
 
-        (new Mailer())->send($email, 'Donnez votre avis — Vite et Gourmand', $html, null, true);
+        (new GmailMailer())->send($email, 'Donnez votre avis — Vite et Gourmand', $html, null, true);
     }
 
     private function notifierAttenteMateriel(array $commande): void {
@@ -251,7 +254,7 @@ trait GestionCommandesAvisTrait {
             return;
         }
 
-        $config = require __DIR__ . '/../../../config/commande.php';
+        $config = require __DIR__ . '/../../../config/commandeconfig.php';
         $delai  = (int) ($config['materiel_delai_jours_ouvres'] ?? 10);
         $frais  = (int) ($config['materiel_frais_non_restitution'] ?? 600);
         $prenom = trim($commande['client_prenom'] ?? '');
@@ -269,7 +272,7 @@ trait GestionCommandesAvisTrait {
             . '<p>Pour toute question, ' . UrlHelper::ancre('/contact', 'contactez-nous') . '.</p>'
             . '<p>L\'équipe Vite et Gourmand</p>';
 
-        (new Mailer())->send($email, 'Retour de matériel — Vite et Gourmand', $html, null, true);
+        (new GmailMailer())->send($email, 'Retour de matériel — Vite et Gourmand', $html, null, true);
     }
 
     private function notifierAnnulationEmploye(array $commande, string $motif, string $modeContact): void {
@@ -292,6 +295,6 @@ trait GestionCommandesAvisTrait {
             . UrlHelper::ancre('/contact', 'page Contact') . '.</p>'
             . '<p>L\'équipe Vite et Gourmand</p>';
 
-        (new Mailer())->send($email, 'Annulation de commande — Vite et Gourmand', $html, null, true);
+        (new GmailMailer())->send($email, 'Annulation de commande — Vite et Gourmand', $html, null, true);
     }
 }

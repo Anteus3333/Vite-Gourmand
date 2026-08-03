@@ -1,5 +1,6 @@
 <?php
-// config/mail.php — configuration générale de l'envoi de mails
+// config/gmail.php — configuration de l'envoi de mails (SMTP Gmail)
+// Surcharge locale : créer gmail.local.php (non versionné).
 
 return [
     // Adresse officielle du traiteur (contact, expéditeur des e-mails automatiques)
@@ -8,7 +9,7 @@ return [
     'from_email' => 'vitegourmand322@gmail.com',
     'from_name'  => 'Vite & Gourmand',
 
-    // SMTP Gmail — activé via config/mail.local.php
+    // SMTP Gmail — activé via config/gmail.local.php
     'smtp' => [
         'enabled'     => false,
         'host'        => 'smtp.gmail.com',

@@ -9,7 +9,7 @@ $cm = $commandeModel;
 </section>
 
 <section class="compte-page">
-    <?php require __DIR__ . '/_nav.php'; ?>
+    <?php require __DIR__ . '/cpte__nav.php'; ?>
 
     <div class="compte-grid">
         <div class="compte-card">

@@ -6,7 +6,7 @@ class DistanceService {
     private string $userAgent = 'ViteEtGourmand/1.0 (ECF; vitegourmand322@gmail.com)';
 
     public function __construct() {
-        $this->config = require __DIR__ . '/../../config/commande.php';
+        $this->config = require __DIR__ . '/../../config/commandeconfig.php';
     }
 
     /**

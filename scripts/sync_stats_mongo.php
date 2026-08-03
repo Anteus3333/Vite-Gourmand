@@ -4,6 +4,11 @@
  * Usage (Laragon) : php scripts/sync_stats_mongo.php
  */
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    exit('CLI only');
+}
+
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/Services/StatsMongoService.php';
 

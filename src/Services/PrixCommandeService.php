@@ -5,7 +5,7 @@ class PrixCommandeService {
     private array $config;
 
     public function __construct() {
-        $this->config = require __DIR__ . '/../../config/commande.php';
+        $this->config = require __DIR__ . '/../../config/commandeconfig.php';
     }
 
     /**
