@@ -276,10 +276,10 @@ Livrables ECF versionnés dans `docs/` (PDF uniquement) :
 
 | Document | Fichier |
 |----------|---------|
-| Manuel d’utilisation | [`docs/rapport_ECF/01-manuel-utilisateur.pdf`](docs/rapport_ECF/01-manuel-utilisateur.pdf) |
-| Charte graphique | [`docs/rapport_ECF/02-charte-graphique.pdf`](docs/rapport_ECF/02-charte-graphique.pdf) |
-| Gestion de projet | [`docs/rapport_ECF/03-gestion-de-projet.pdf`](docs/rapport_ECF/03-gestion-de-projet.pdf) |
-| Documentation technique | [`docs/rapport_ECF/04-documentation-technique.pdf`](docs/rapport_ECF/04-documentation-technique.pdf) |
+| Manuel d’utilisation | [`docs/rapport_ECF/01-SAGD - manuel-utilisateur.pdf`](docs/rapport_ECF/01-SAGD%20-%20manuel-utilisateur.pdf) |
+| Charte graphique | [`docs/rapport_ECF/02-SAGD - charte-graphique.pdf`](docs/rapport_ECF/02-SAGD%20-%20charte-graphique.pdf) |
+| Gestion de projet | [`docs/rapport_ECF/03-SAGD - gestion-de-projet.pdf`](docs/rapport_ECF/03-SAGD%20-%20gestion-de-projet.pdf) |
+| Documentation technique | [`docs/rapport_ECF/04-SAGD - documentation-technique.pdf`](docs/rapport_ECF/04-SAGD%20-%20documentation-technique.pdf) |
 
 Les brouillons (HTML/MD), captures et scripts restent en local (non versionnés) ; seuls les PDF livrables sont commités.
 

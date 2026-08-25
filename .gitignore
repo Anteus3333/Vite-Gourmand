@@ -28,6 +28,9 @@ scripts/**
 # Archives CSS locales (backups hors versionnement)
 public/css/archive/
 
+# Swagger UI local (doc API — ne pas committer)
+public/swagger/
+
 # OS / IDE
 .DS_Store
 Thumbs.db
