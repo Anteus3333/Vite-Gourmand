@@ -8,3 +8,11 @@ RewriteCond %{REQUEST_FILENAME} !-d
 
 # Sinon, on redirige tout vers index.php en passant le chemin dans ?url=
 RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+
+
+# Ce code impose deux conditions avant de rediriger vers index.php :
+# 1. !-f → le chemin n’est pas un fichier existant
+# 2. !-d → le chemin n’est pas un dossier existant
+
+# ex : /css/style.css → fichier réel → pas réécrit (Apache sert le CSS)
+# /menus → ni fichier ni dossier → réécrit vers index.php?url=menus
