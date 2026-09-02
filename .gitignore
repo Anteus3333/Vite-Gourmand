@@ -12,6 +12,7 @@ logs/*
 !logs/.htaccess
 
 # --- Docs : uniquement les PDF livrables sous docs/rapport_ECF/ ---
+# (brouillons DP, guides, extractions, etc. restent locaux — ex. docs/DP/)
 docs/**
 !docs/.htaccess
 !docs/rapport_ECF/
