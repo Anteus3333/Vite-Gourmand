@@ -1,4 +1,19 @@
 # Si le DocumentRoot ne peut pas pointer vers public/, redirige les requêtes.
 RewriteEngine On
+
 RewriteRule ^$ public/ [L]
+# ^ = Début de l’URL (chemin)
+# $ = Fin de l’URL
+# donc ^$ = si URL vide = page d’accueil (/)
+# règle > on redirige ainsi : Destination : dossier public/
+# [L] = Last : on s’arrête là, pas d’autre règle après
+
+
 RewriteRule (.*) public/$1 [L]
+# capture ce qui matche entre parenthèses (.*) et redirige vers public/$1
+# $1 = Premier groupe capturé (tout ce qui est entre parenthèses)
+# [L] = Last : on s’arrête là, pas d’autre règle après
+# ex : /css/style.css → réécrit vers public/css/style.css
+# /menus → réécrit vers public/menus
+
+# Sur infomaniak, figure dans les paramètres de l'hébergeur

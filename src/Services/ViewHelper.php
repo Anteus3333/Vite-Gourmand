@@ -1,6 +1,22 @@
 <?php
 // src/Services/ViewHelper.php — composants d'affichage réutilisables
 
+
+// est une boîte à outils d’affichage pour les vues : 
+// des petites fonctions réutilisables qui génèrent du HTML 
+// ou formatent du texte, pour ne pas recopier la même logique partout.
+
+// 3 Méthodes pour afficher les noms proprement
+// (Jean-Pierre DUPONT)
+// formatPrenom() : prénom en minuscule, avec une valeur par défaut.
+// formatNom() : nom en majuscule, avec une valeur par défaut.
+// formatNomComplet() : nom complet en majuscule, avec une valeur par défaut.
+
+// btnNav() : Bouton de navigation (sans lien <a> classique)
+
+// champHeure() : champ heure custom (2 listes custom + hidden HH:MM) — pas de select natif (bleu).
+// champDate() : champ date custom (bouton + calendrier + hidden YYYY-MM-DD).
+
 class ViewHelper {
 
     /** Prénom : première lettre de chaque mot en majuscule (ex. Jean-Pierre). */
@@ -9,6 +25,10 @@ class ViewHelper {
         if ($prenom === '') {
             return '';
         }
+        // mb_convert_case() convertit la première lettre de chaque mot en majuscule
+        // mb_strtolower() convertit le prénom en minuscule
+        // MB_CASE_TITLE convertit la première lettre de chaque mot en majuscule
+        // UTF-8 est le jeu de caractères utilisé
         return mb_convert_case(mb_strtolower($prenom, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
     }
 
@@ -18,20 +38,36 @@ class ViewHelper {
         if ($nom === '') {
             return '';
         }
+        // mb_strtoupper() convertit le nom en majuscule
+        // UTF-8 est le jeu de caractères utilisé
         return mb_strtoupper($nom, 'UTF-8');
     }
 
     /** Affichage standard « Prénom NOM » (indépendant de la casse saisie). */
+    // fallback est une valeur par défaut si le prénom ou le nom est vide
     public static function formatNomComplet(?string $prenom, ?string $nom, string $fallback = ''): string {
         $complet = trim(self::formatPrenom($prenom) . ' ' . self::formatNom($nom));
+        // trim() retire les espaces en début et fin de la chaîne
+        // self::formatPrenom($prenom) appelle la méthode formatPrenom() de la classe ViewHelper
+        // self::formatNom($nom) appelle la méthode formatNom() de la classe ViewHelper
+        // $complet est le nom complet
+        // $complet !== '' vérifie si le nom complet n'est pas vide
+        // $complet !== '' ? $complet : $fallback retourne le nom complet si il n'est pas vide, sinon la valeur par défaut
         return $complet !== '' ? $complet : $fallback;
     }
 
     /**
      * Bouton de navigation sans prévisualisation d'URL au survol (contrairement à <a href>).
      */
+    // url est l'URL de la page
+    // label est le texte du bouton
+    // classes est la classe CSS du bouton
+    // attrs est un tableau d'attributs HTML
     public static function btnNav(string $url, string $label, string $classes = 'btn', array $attrs = []): string {
         $action = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+        // htmlspecialchars() convertit les caractères spéciaux en entités HTML
+        // ENT_QUOTES convertit les quotes en entités HTML
+        // UTF-8 est le jeu de caractères utilisé
         $labelEsc = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
         $classesEsc = htmlspecialchars($classes, ENT_QUOTES, 'UTF-8');
 

@@ -16,3 +16,5 @@ RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
 
 # ex : /css/style.css → fichier réel → pas réécrit (Apache sert le CSS)
 # /menus → ni fichier ni dossier → réécrit vers index.php?url=menus
+
+# Fichier donc appelé quand le user ecrit une URL avec le chemin /public/
