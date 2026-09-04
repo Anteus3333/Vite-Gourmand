@@ -63,13 +63,41 @@ class ViewHelper {
     // label est le texte du bouton
     // classes est la classe CSS du bouton
     // attrs est un tableau d'attributs HTML
+
+    // Ex d'attributs
+    // ViewHelper::btnNav(
+    //     $url = BASE_URL . '/commande?menu_id=' . (int) $menu['menu_id'],
+    //     $label = 'Commander ce menu',
+    //     $classes = 'btn btn-large',
+    //     $attrs = ['id' => 'btn-commander']   // ← $attrs
+    // )
+
+    // 'Commander ce menu' est le texte du bouton
+    // 'btn btn-large' est la classe CSS du bouton
+    // ['id' => 'btn-commander'] est un tableau d'attributs HTML
+    // id='btn-commander' est un attribut HTML
+    // btn-commander est la valeur de l'attribut id
+    
+    // HTML généré
+    // <button type="button" class="btn btn-large" data-navigate="..." id="btn-commander" title="Passer commande">
+    //      Commander ce menu
+    // </button>
+    // La balise button est dans le return de la méthode btnNav()
+
     public static function btnNav(string $url, string $label, string $classes = 'btn', array $attrs = []): string {
+        
         $action = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
         // htmlspecialchars() convertit les caractères spéciaux en entités HTML
         // ENT_QUOTES convertit les quotes en entités HTML
         // UTF-8 est le jeu de caractères utilisé
+        // $action est l'URL de la page
+        // Avec l'exemple c-dessus, $action vaut BASE_URL . '/commande?menu_id=1'
+        
         $labelEsc = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+        // $labelEsc est le texte du bouton
+        
         $classesEsc = htmlspecialchars($classes, ENT_QUOTES, 'UTF-8');
+        // $classesEsc est la classe CSS du bouton
 
         $extra = '';
         foreach ($attrs as $name => $value) {
@@ -87,12 +115,22 @@ class ViewHelper {
      */
     public static function champHeure(
         string $id,
+        // $id est l'ID du champ
         string $name,
         string $value = '',
+        // $value est la valeur du champ
+        // Exemple : $value = '12:00'
         bool $required = true,
+        // $required est si le champ est requis
+        // Exemple : $required = true
         int $stepMinutes = 15
+        // $stepMinutes est le pas des minutes
+        // Exemple : $stepMinutes = 15
+        // Le user ne peut pas choisir une heure qui n'est pas un multiple de $stepMinutes
     ): string {
         $value = substr(trim($value), 0, 5);
+        // Exemple : $value = '12:00'
+        // preg_match() est une fonction qui vérifie si la valeur correspond à un format HH:MM
         if ($value !== '' && !preg_match('/^\d{2}:\d{2}$/', $value)) {
             $value = '';
         }
@@ -101,6 +139,12 @@ class ViewHelper {
         if ($stepMinutes < 1) {
             $stepMinutes = 15;
         }
+
+        // Si le minute n'est pas un multiple de $stepMinutes, on arrondi à l'unité inférieure
+        // Exemple : $minute = 13, $stepMinutes = 15
+        // $minute = 13 / 15 = 0.86666666666667
+        // $minute = 0.86666666666667 * 15 = 13
+        // $minute = 13
         if ($minute >= 0 && ($minute % $stepMinutes) !== 0) {
             $minute = (int) (round($minute / $stepMinutes) * $stepMinutes);
             if ($minute >= 60) {
@@ -110,6 +154,18 @@ class ViewHelper {
         }
 
         $reqAttr = $required ? ' required' : '';
+
+        // $idEsc est l'ID du champ
+        // $nameEsc est le nom du champ
+        // $valEsc est la valeur du champ
+        // $heureLabel est le label de l'heure
+        // $minuteLabel est le label des minutes
+        // $heurePh est la classe CSS de l'heure
+        // $minutePh est la classe CSS des minutes
+        // $heuresJson est un tableau des heures
+        // $minutesJson est un tableau des minutes
+        // $html est le HTML du champ
+
         $idEsc = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
         $nameEsc = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $valEsc = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
@@ -156,6 +212,7 @@ class ViewHelper {
         $html .= '</div></div>';
         return $html;
     }
+
 
     /**
      * Champ date custom (bouton + calendrier + hidden YYYY-MM-DD).
