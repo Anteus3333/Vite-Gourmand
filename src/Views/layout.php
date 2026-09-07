@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css?v=<?= $cssVersion ?>">
 </head>
 <body>
+    <a class="skip-link" href="#contenu-principal">Aller au contenu principal</a>
     <header role="banner">
         <nav class="navbar" aria-label="Navigation principale">
             <a href="<?= BASE_URL ?>/" class="logo">Vite &amp; Gourmand</a>
