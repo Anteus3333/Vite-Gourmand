@@ -2,7 +2,8 @@
 // On démarre la session pour gérer plus tard la connexion/hash
 session_start();
 
-// __DIR__ est une constante magique qui contient le chemin du dossier courant (ici /public)
+// __DIR__ est une constante magique qui contient le chemin 
+// du dossier courant (ici /public)
 // On utilise __DIR__ pour partir de /public, reculer d'un dossier (..), et aller dans /vendor
 $autoload = __DIR__ . '/../vendor/autoload.php';
 // le répertoire vendor est créé par Composer, si le fichier autoload.php n'existe pas, c'est que Composer n'a pas été exécuté
@@ -27,7 +28,8 @@ require_once __DIR__ . '/../src/Services/ViewHelper.php';
 require_once __DIR__ . '/../src/Services/UrlHelper.php';
 
 
-// Permet de générer des liens corrects quel que soit le dossier d'installation.
+// Permet de générer des liens corrects quel que soit 
+// le dossier d'installation.
 define('BASE_URL', rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\'));
 // $_SERVER['SCRIPT_NAME'] contient le chemin du script en cours d'exécution 
 //      (ici /Studi_ECF/public/index.php, mais ça peut être aussi /Studi_ECF/public/css/style.css si on est dans un fichier CSS)

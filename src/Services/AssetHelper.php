@@ -20,9 +20,19 @@ class AssetHelper {
     // __DIR__ est une constante magique qui contient le chemin du dossier courant (ici /src/Services)
     // On utilise __DIR__ pour partir de /src/Services, reculer d'un dossier (..), et aller dans /public/images
     // ltrim() retire les espaces en début et fin de la chaîne
-    // Ex. "plats/photo.jpg" → "plats/photo.jpg"
-    // Ex. "/plats/photo.jpg" → "plats/photo.jpg"
-    // Ex. "plats/photo.jpg" → "plats/photo.jpg"
+
+    // Ex : $relatif = 'plats/salade.jpg';
+    // return __DIR__ . '/../../public/images/' . ltrim($relatif, '/');
+    // return '/src/Services/../../public/images/plats/salade.jpg'
+    // is_file() vérifie si le fichier existe
+    // Ex : is_file(self::cheminAbsolu($rel))
+    // return true
+    // return BASE_URL . '/images/' . implode('/', $parts);
+    // return '/Studi_ECF/public/images/plats/salade.jpg'
+    // return BASE_URL . '/images/' . ltrim($defaut, '/');
+    // return '/Studi_ECF/public/images/menus/default.svg'
+
+    // Renvoie donc le chemin disque
     private static function cheminAbsolu(string $relatif): string {
         return __DIR__ . '/../../public/images/' . ltrim($relatif, '/');
     }

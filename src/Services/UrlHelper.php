@@ -3,8 +3,18 @@
 
 class UrlHelper {
 
-    /** URL absolue à partir d'un chemin applicatif (ex: /contact ou contact) */
+    /** URL absolue à partir d'un chemin applicatif 
+     * (ex: /contact ou contact) */
+    // Ex : UrlHelper::absolue('/reinitialisation?token=abc123')
+    // return 'https://localhost/reinitialisation?token=abc123'
+    
+
     public static function absolue(string $chemin = ''): string {
+        
+        // ltrim() retire les espaces en début et fin de la chaîne
+        // Ex : ltrim('/reinitialisation?token=abc123', '/')
+        // return 'reinitialisation?token=abc123'
+
         $chemin = '/' . ltrim($chemin, '/');
         if ($chemin === '/') {
             $chemin = '';

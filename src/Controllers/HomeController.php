@@ -1,7 +1,18 @@
 <?php
 // src/Controllers/HomeController.php
 
+// Voir index.php pour la définition de __DIR__
+// ici __DIR__ est le chemin du dossier courant (ici /src/Controllers)
 require_once __DIR__ . '/../Models/AvisModel.php';
+
+// Un controller est une classe qui contient les méthodes pour 
+// gérer les requêtes HTTP
+// Et les redistribuer aux modèles et aux vues
+
+// La classe HomeController contient la méthode index() qui est 
+// appelée lorsque l'utilisateur accède à l'accueil du site
+
+// Elle est appelée par le Router
 
 class HomeController {
     
