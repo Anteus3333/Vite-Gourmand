@@ -50,6 +50,8 @@ class Router {
             // Nota, l'usage de la variable $controller est une bonne pratique 
             // pour éviter les conflits de noms
 
+            // Nota un case vide sans break pousse au case suivant
+
             case 'accueil':
                 $controller = new HomeController();
                 $controller->index();

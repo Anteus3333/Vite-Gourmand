@@ -16,6 +16,18 @@ class AvisModel {
     public function getAvisValides() {
         // On fait une jointure avec la table utilisateur pour récupérer le prénom de l'auteur
         // (la table utilisateur n'a pas de colonne 'nom', et la validation se fait via 'statut')
+        
+        // la lettre a est une variable 
+        // pour récupérer le contenu de la table avis
+        // FROM avis a
+
+        // la lettre u est une variable 
+        // pour récupérer le contenu de la table utilisateur
+        // JOIN utilisateur u
+
+        // ces lettres sont obligatoires pour la jointure
+        // cet alias évite la confusion entre les colonnes de la table avis et la table utilisateur
+        // Sinon fallait écrire nom_table.nom_colonne
         $query = "
             SELECT a.note, a.description, u.prenom 
             FROM avis a
@@ -46,17 +58,28 @@ class AvisModel {
     }
 
     /** Tous les avis pour la liste employé (filtre optionnel) */
+    
+    // Décomposition du paramètre ?string $statut = null
+    // $statut = nom du paramètre (valide, en_attente, refuse)
+    // string = type de donnée (chaîne de caractères)
+    // null = valeur par défaut (null)
+    // ? devant le type de donnée signifie que le paramètre est optionnel
+    // Donc qu'il peut être vide ou non
+
     public function getAll(?string $statut = null): array {
         $sql = "
             SELECT a.*, u.prenom, u.nom, u.email
             FROM avis a
             JOIN utilisateur u ON a.utilisateur_id = u.utilisateur_id
         ";
+
         $params = [];
+        // Si le paramètre $statut n'est pas vide ou non, alors on ajoute la condition WHERE a.statut = :statut
         if ($statut !== null && $statut !== '') {
             $sql .= " WHERE a.statut = :statut";
             $params[':statut'] = $statut;
         }
+        // le .= est un opérateur de concaténation
         $sql .= " ORDER BY a.avis_id DESC";
 
         $stmt = $this->conn->prepare($sql);
@@ -82,9 +105,17 @@ class AvisModel {
     public function refuser(int $id): void {
         $this->conn->prepare("UPDATE avis SET statut = 'refuse' WHERE avis_id = :id")
             ->execute([':id' => $id]);
+
+        // Aurait pu être divisé en deux lignes de code
+        // $stmt = $this->conn->prepare("UPDATE avis SET statut = 'refuse' WHERE avis_id = :id");
+        // $stmt->execute([':id' => $id]);
     }
 
     /** Avis déjà déposés par un utilisateur */
+    // LEFT JOIN est un type de jointure qui permet de récupérer 
+    // tous les enregistrements de la table avis
+    // même si il n'y a pas de correspondance avec la table commande
+
     public function getByUtilisateur(int $utilisateurId): array {
         $stmt = $this->conn->prepare("
             SELECT a.*, c.numero_commande, m.titre AS menu_titre
@@ -126,6 +157,11 @@ class AvisModel {
             ':numero'         => $numeroCommande,
             ':utilisateur_id' => $utilisateurId,
         ]);
+
+        // lastInsertId() est une méthode qui permet de récupérer 
+        // le dernier identifiant inséré dans la table avis
+        // et de le convertir en entier
+        // C'est donc une fonction native de PHP
         return (int) $this->conn->lastInsertId();
     }
 }
