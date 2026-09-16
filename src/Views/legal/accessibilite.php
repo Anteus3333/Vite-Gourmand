@@ -2,6 +2,13 @@
 ob_start();
 ?>
 
+<!-- Le RGAA signifie Référentiel Général d'Amélioration de l'Accessibilité.
+
+C'est un cadre réglementaire français qui définit les règles et les critères techniques à respecter 
+pour rendre les services numériques (sites web, applications mobiles, logiciels) accessibles 
+aux personnes en situation de handicap (handicaps visuels, auditifs, moteurs, cognitifs, etc.). -->
+
+
 <section class="legal-hero compte-hero compte-hero-compact">
     <h1>Accessibilité</h1>
     <p>Déclaration d'accessibilité du site Vite et Gourmand.</p>

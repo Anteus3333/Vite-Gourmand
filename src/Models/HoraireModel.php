@@ -40,6 +40,8 @@ class HoraireModel {
      *
      * @return list<string>
      */
+
+    
     public function getResumeFooter(): array {
         $rows = $this->getAll();
         if (empty($rows)) {

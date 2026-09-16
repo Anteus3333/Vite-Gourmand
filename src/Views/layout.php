@@ -31,6 +31,7 @@
         <nav class="navbar" aria-label="Navigation principale">
             <a href="<?= BASE_URL ?>/" class="logo">Vite &amp; Gourmand</a>
 
+            <!-- label-open et label-close sont utilisés dans le fichier main.js-->
             <button type="button" class="burger" id="burger"
                 aria-expanded="false" aria-controls="nav-links"
                 data-label-open="Ouvrir le menu de navigation"
