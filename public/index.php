@@ -32,7 +32,8 @@ require_once __DIR__ . '/../src/Services/UrlHelper.php';
 // le dossier d'installation.
 define('BASE_URL', rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\'));
 // $_SERVER['SCRIPT_NAME'] contient le chemin du script en cours d'exécution 
-//      (ici /Studi_ECF/public/index.php, mais ça peut être aussi /Studi_ECF/public/css/style.css si on est dans un fichier CSS)
+//      (ici /Studi_ECF/public/index.php, mais ça peut être aussi /Studi_ECF/public/css/style.css 
+
 // dirname() retourne le chemin du dossier parent (ici /Studi_ECF/public)
 // rtrim() supprime les caractères / et \ éventuels à la fin de la chaîne (ex pas de risque d'avoir //css/style.css)
 // BASE_URL contient le chemin de base du site

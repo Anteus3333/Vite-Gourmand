@@ -1,4 +1,5 @@
 <?php 
+
 // ob_start() : permet de stocker le contenu de la page 
 // dans un buffer (zone de mémoire temporaire)
 ob_start(); 

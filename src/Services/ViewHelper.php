@@ -1,8 +1,7 @@
 <?php
 // src/Services/ViewHelper.php — composants d'affichage réutilisables
 
-
-// est une boîte à outils d’affichage pour les vues : 
+// C'est une boîte à outils d’affichage pour les vues : 
 // des petites fonctions réutilisables qui génèrent du HTML 
 // ou formatent du texte, pour ne pas recopier la même logique partout.
 
@@ -27,7 +26,7 @@ class ViewHelper {
         }
         // mb_convert_case() convertit la première lettre de chaque mot en majuscule
         // mb_strtolower() convertit le prénom en minuscule
-        // MB_CASE_TITLE convertit la première lettre de chaque mot en majuscule
+        // MB_CASE_TITLE est la valeur renvoyée par mb_convert_case()
         // UTF-8 est le jeu de caractères utilisé
         return mb_convert_case(mb_strtolower($prenom, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
     }

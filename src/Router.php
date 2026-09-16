@@ -13,6 +13,14 @@ require_once __DIR__ . '/Controllers/AdminController.php';
 class Router {
     public function dispatch($url) {
         // Parse l'URL pour extraire la route principale et les paramètres
+
+        // Ex layout.php gènère un lien URL BASE_URL + mentions-legales
+        // ce qui fait en local http://localhost/Studi_ECF/public/mentions-legales
+        // Et le .htaccess transforme cette URL en http://localhost/mentions-legales
+        // Et le Router transforme cette URL en "mentions-legales"
+        // Et le Controller LegalController gère la requête et génère la page mentions-legales.php
+        // Et la page mentions-legales.php génère le contenu de la page mentions-legales.
+
         
         $parts = explode('/', trim($url, '/'));
         // trim() retire les espaces en début et fin de la chaîne
