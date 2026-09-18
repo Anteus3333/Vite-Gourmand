@@ -21,6 +21,14 @@ class TentativeConnexionModel {
 
     // Nombre d'échecs récents pour cet email OU cette IP
     public function compterRecentes(string $email, string $ip): int {
+
+        // Prépare la requête SQL pour compter les échecs récents
+        // DATE_SUB(NOW(), INTERVAL " . self::FENETRE_MINUTES . " MINUTE) : 
+        // soustrait FENETRE_MINUTES minutes à la date et heure actuelles (NOW())
+        // self::FENETRE_MINUTES : constante de la classe TentativeConnexionModel
+        // Constante défini au début de la classe TentativeConnexionModel
+        // self signifie que la constante est définie dans la classe TentativeConnexionModel
+
         $stmt = $this->conn->prepare("
             SELECT COUNT(*) AS nb
             FROM tentative_connexion
@@ -32,6 +40,15 @@ class TentativeConnexionModel {
     }
 
     /** Compte les envois récents d'un formulaire (email marqueur + IP) */
+    // LA différence entre compterRecentes et compterExact est que 
+    // compterRecentes compte les échecs récents pour un email OU une IP, 
+    // alors que compterExact compte les échecs récents pour un email ET une IP.
+
+    // Ex cas du OU sur Login : X tentatives avec le même email mais IP Diff sur Login
+    // Obj : éviter Fraude par IP différente sur Login
+    // Ex cas du ET sur Contact : X tentatives avec même mail et IP 
+    // Eviter blocage formulaire (spam)
+
     public function compterExact(string $email, string $ip, ?int $fenetreMinutes = null): int {
         $fenetre = max(1, $fenetreMinutes ?? self::FENETRE_MINUTES);
         $stmt = $this->conn->prepare("
@@ -45,6 +62,17 @@ class TentativeConnexionModel {
     }
 
     /** Compte tous les envois d'un marqueur (toutes IP) — anti-flood global */
+    // Se focalise sur email pour éviter saturation formulaire
+    // (trop de demandes en même temps
+    // Un msg d'erreur vient indiquer que le formulaire est en surcharge
+    // Msg généré dans ContactController.php
+
+    // WHERE email = :email : permet de compter les échecs 
+    // où $email = __contact_form__ qui est la constante définie dans ContactController.php
+    // où $email = __@__ poussé par Login (même mail)
+    // Ne pas confondre mais construit comme ça pour utiliser la même table
+    // tentative_connexion pour éviter de créer une nouvelle table
+
     public function compterMarqueur(string $email, int $fenetreMinutes): int {
         $fenetre = max(1, $fenetreMinutes);
         $stmt = $this->conn->prepare("
