@@ -24,6 +24,7 @@ class GmailMailer {
      * Une copie est toujours archivée dans logs/mails/ (utile en local).
      *
      * @param string|null $replyTo Adresse de réponse (ex: mail du visiteur sur le formulaire contact)
+     * Ce paramètre est optionnel et permet de spécifier l'adresse de réponse pour le mail.
      */
     public function send(
         string $destinataire,
@@ -37,7 +38,10 @@ class GmailMailer {
         $envoye = false;
         if ($this->smtpActif()) {
             $envoye = $this->envoyerViaSmtp($destinataire, $sujet, $message, $headers);
-        } else {
+        } 
+        else {
+            // Envoi par le mail de Laragon
+            // Ceci dit échoue souvent donc archive logs
             $envoye = @mail($destinataire, $sujet, $message, $headers);
         }
 
@@ -46,9 +50,13 @@ class GmailMailer {
     }
 
     public function getContactEmail(): string {
+        // utilisation de config pour configurer l'email de contact
+        // pour laisser le mail de Laragon comme backup
         return $this->config['contact_email'];
     }
 
+    // vérifie si le mail est configuré pour l'envoi via SMTP
+    // le password est vérifié pour éviter les erreurs de connexion
     private function smtpActif(): bool {
         $smtp = $this->config['smtp'] ?? [];
         return !empty($smtp['enabled'])
@@ -74,6 +82,7 @@ class GmailMailer {
         return $headers;
     }
 
+    // encode le sujet du mail pour éviter les problèmes de caractères
     private function encoderSujet(string $sujet): string {
         if (function_exists('mb_encode_mimeheader')) {
             return mb_encode_mimeheader($sujet, 'UTF-8', 'B', "\r\n");
@@ -86,6 +95,14 @@ class GmailMailer {
         $host = $smtp['host'];
         $port = (int) $smtp['port'];
 
+        // $socket est un flux de communication avec le serveur SMTP
+        // on utilise stream_socket_client pour créer le socket
+        // on utilise tcp:// pour indiquer que l'on utilise le protocole TCP
+        // on utilise localhost:25 pour indiquer que l'on utilise le port 25
+        // on utilise 15 pour indiquer que l'on attend 15 secondes pour la connexion
+        // on utilise STREAM_CLIENT_CONNECT pour indiquer que l'on utilise la connexion persistante
+        // on utilise $errno et $errstr pour stocker les erreurs de connexion
+        // on utilise @ pour supprimer les warnings
         try {
             $socket = @stream_socket_client(
                 "tcp://{$host}:{$port}",
@@ -145,6 +162,10 @@ class GmailMailer {
         }
     }
 
+    // envoie une commande au serveur SMTP
+    // on utilise fwrite pour écrire la commande dans le socket
+    // on utilise $codesOk pour vérifier la réponse du serveur
+    // on utilise throw new RuntimeException pour lancer une exception si la réponse n'est pas attendue
     /** @param int[] $codesOk */
     private function envoyerCommande($socket, string $commande, array $codesOk): void {
         fwrite($socket, $commande . "\r\n");
