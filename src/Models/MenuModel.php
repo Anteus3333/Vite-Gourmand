@@ -43,9 +43,19 @@ class MenuModel {
 
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
+
+
+        // Ici on attache les couvertures aux menus, en récupérant les 
+        // images de la table menu_image où l'ordre est 1
+        // 1 signifie que c'est la couverture du menu (l'image principale)
+        // les couvertures sont des images qui sont associées aux menus
         return $this->attacherCouvertures($stmt->fetchAll() ?: []);
     }
 
+    // Affiche un menu par son identifiant
+    // Cette fonction est appelée par le fichier menu.js
+    // Le menu est retourné sous forme de tableau associatif
+    // Le tableau associatif contient les informations du menu
     public function getMenuById(int $menuId) {
         $query = "
             SELECT 
@@ -71,12 +81,24 @@ class MenuModel {
         $menu = $stmt->fetch() ?: null;
         if ($menu) {
             $menu['visible'] = (int) ($menu['visible'] ?? 1);
+
+            // Ici on récupère la couverture du menu
+            // la couverture est l'image principale du menu
+            // la couverture est récupérée dans la table menu_image
+            // où l'ordre est 1
+            // 1 signifie que c'est la couverture du menu (l'image principale)
             $menu['image_couverture'] = $this->getCouverture($menuId);
         }
         return $menu;
     }
 
     /** Galerie d'images d'un menu (recalculée à partir couverture + plats). */
+    // Cette fonction est appelée par le fichier menu.js
+    // Elle retourne la galerie d'images d'un menu
+    // La galerie d'images est retournée sous forme de tableau associatif
+    // Le tableau associatif contient les informations de la galerie d'images
+    // Les informations de la galerie d'images sont les images de la galerie d'images
+    // Les images de la galerie d'images sont récupérées dans la table menu_image
     public function getImagesByMenuId(int $menuId): array {
         $this->synchroniserGalerieMenu($menuId);
         $stmt = $this->conn->prepare("
@@ -102,6 +124,10 @@ class MenuModel {
         $plats = $this->getPlatsByMenuId($menuId);
 
         $slots = [];
+        // Ici on récupère la couverture du menu
+        // $slots[1] est le tableau associatif qui contient l'image de la couverture
+        // $slots[1]['fichier'] est le chemin de l'image de la couverture
+        // $slots[1]['legende'] est le titre du menu
         if ($couverture !== null && $couverture !== '') {
             $slots[1] = [
                 'fichier'  => $couverture,
@@ -115,9 +141,14 @@ class MenuModel {
                 break;
             }
             $image = trim((string) ($plat['image'] ?? ''));
+            // Si l'image est vide, on passe au plat suivant
             if ($image === '') {
                 continue;
             }
+            // Ici on récupère les images des plats
+            // $slots[$ordre] est le tableau associatif qui contient l'image du plat
+            // $slots[$ordre]['fichier'] est le chemin de l'image du plat
+            // $slots[$ordre]['legende'] est le titre du plat
             $slots[$ordre] = [
                 'fichier'  => $image,
                 'legende'  => (string) $plat['titre_plat'],
@@ -128,7 +159,10 @@ class MenuModel {
         for ($o = 1; $o <= 4; $o++) {
             if (isset($slots[$o])) {
                 $this->upsertImageGalerie($menuId, $o, $slots[$o]['fichier'], $slots[$o]['legende']);
-            } else {
+            } 
+            else {
+                // Si l'image n'est pas dans le tableau $slots, on la supprime
+                // de la galerie
                 $this->supprimerImageGalerieOrdre($menuId, $o);
             }
         }
@@ -137,6 +171,11 @@ class MenuModel {
             ->execute([':id' => $menuId]);
     }
 
+    // Cette fonction est appelée par le fichier menu.js
+    // Elle met à jour la galerie de tous les menus contenant ce plat
+    // La galerie est mise à jour en récupérant les images des plats
+    // et en les associant aux menus
+    // La galerie est mise à jour en récupérant les images des plats
     /** Met à jour la galerie de tous les menus contenant ce plat. */
     public function synchroniserGaleriePourPlat(int $platId): void {
         $stmt = $this->conn->prepare("SELECT DISTINCT menu_id FROM contenu_menu WHERE plat_id = :id");
@@ -146,6 +185,13 @@ class MenuModel {
         }
     }
 
+    // Cette fonction est appelée par le fichier menu.js
+    // Elle retourne les plats d'un menu
+    // Les plats sont retournés sous forme de tableau associatif
+    // Le tableau associatif contient les informations des plats
+    // Les informations des plats sont récupérées dans la table plat
+    // et la table contenu_menu
+    // et la table plat_allergene
     /** Plats d'un menu avec image et allergènes par plat */
     public function getPlatsDetailByMenuId(int $menuId): array {
         $stmt = $this->conn->prepare("
@@ -176,6 +222,8 @@ class MenuModel {
         return array_values($plats);
     }
 
+    // fonction en deux parties parce que getCouverture est appelée par getMenuById
+    // et getFichierCouverture est appelée par synchroniserGalerieMenu
     private function getCouverture(int $menuId): ?string {
         return $this->getFichierCouverture($menuId);
     }
@@ -189,6 +237,9 @@ class MenuModel {
         ");
         $stmt->execute([':id' => $menuId]);
         $row = $stmt->fetch();
+
+        // Si le fichier n'est pas vide, on retourne le fichier
+        // Sinon, on retourne null
         return isset($row['fichier']) && $row['fichier'] !== '' ? (string) $row['fichier'] : null;
     }
 
@@ -234,6 +285,14 @@ class MenuModel {
         if (empty($menus)) {
             return $menus;
         }
+
+        // array_map a pour but de récupérer les identifiants des menus
+        // array_column a pour but de récupérer les identifiants des menus
+        // intval a pour but de convertir les identifiants des menus en entiers
+        // implode a pour but de concaténer les identifiants des menus en une chaîne de caractères
+        // count a pour but de compter le nombre d'identifiants des menus
+        // ? est un placeholder pour les identifiants des menus
+        // $in est la chaîne de caractères qui contient les identifiants des menus
         $ids = array_map('intval', array_column($menus, 'menu_id'));
         $in = implode(',', array_fill(0, count($ids), '?'));
         $stmt = $this->conn->prepare("
@@ -244,7 +303,13 @@ class MenuModel {
         $stmt->execute($ids);
         $couvertures = [];
         foreach ($stmt->fetchAll() ?: [] as $row) {
+
+            // mid est l'identifiant du menu
+            // fichier est le chemin de l'image de la couverture
             $mid = (int) $row['menu_id'];
+
+            // !isset($couvertures[$mid]) est une condition qui vérifie 
+            // si l'identifiant du menu n'est pas déjà associé à une couverture
             if (!isset($couvertures[$mid])) {
                 $couvertures[$mid] = $row['fichier'];
             }
@@ -276,6 +341,7 @@ class MenuModel {
         return $stmt->fetchAll() ?: [];
     }
 
+    // Cette fonction est appelée par le fichier menu.js
     /**
      * Récupère les allergènes des plats d'un menu
      */
@@ -297,6 +363,7 @@ class MenuModel {
         return $stmt->fetchAll() ?: [];
     }
 
+    // Cette fonction est appelée par le fichier menu.js
     /**
      * Récupère tous les thèmes pour les filtres
      */
@@ -410,6 +477,9 @@ class MenuModel {
             ':theme_id'    => (int) $data['theme_id'],
             ':regime_id'   => (int) $data['regime_id'],
         ]);
+
+        // lastInsertId est une méthode native de PDO qui retourne l'identifiant 
+        // de la dernière insertion
         return (int) $this->conn->lastInsertId();
     }
 
@@ -417,6 +487,7 @@ class MenuModel {
      * Définit / remplace la couverture (ordre 1).
      * @return string|null ancien chemin fichier (pour suppression disque éventuelle)
      */
+
     public function definirCouverture(int $menuId, string $fichier, ?string $legende = null): ?string {
         $ancien = $this->getCouverture($menuId);
         $stmt = $this->conn->prepare("
@@ -462,6 +533,7 @@ class MenuModel {
         return array_column($stmt->fetchAll() ?: [], 'fichier');
     }
 
+    // ici on modifie un menu
     public function modifier(int $menuId, array $data): void {
         $stmt = $this->conn->prepare("
             UPDATE menu SET
