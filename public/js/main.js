@@ -304,10 +304,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // elle va également gérer les évènements de visibilité de la page
     // elle va également gérer les évènements de focus sur la page
 
+    // querysSelectorAll est une fonction qui permet de récupérer tous les éléments 
+    // de la page qui ont un attribut data-menu-gallery
+    // elle prend en paramètre un sélecteur CSS
     document.querySelectorAll('[data-menu-gallery]').forEach((gallery) => {
         const track = gallery.querySelector('.menu-gallery-track');
         const slides = Array.from(gallery.querySelectorAll('.menu-gallery-slide'));
         const dots = Array.from(gallery.querySelectorAll('.menu-gallery-dot'));
+
+        // btnPrev et btnNext sont les boutons de navigation entre les photos
+        // C'est la classe de ces boutons dans menu-detail.php qui est appelé
         const btnPrev = gallery.querySelector('.menu-gallery-prev');
         const btnNext = gallery.querySelector('.menu-gallery-next');
         if (!track || slides.length < 2) {

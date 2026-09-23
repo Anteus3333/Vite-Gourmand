@@ -7,6 +7,10 @@ ob_start();
 <div class="menu-detail-container">
     <div class="menu-detail-header">
         <a href="<?= BASE_URL ?>/menus" class="back-link">← Retour aux menus</a>
+
+        <!-- htmlspecialchars est une fonction qui permet de convertir les caractères spéciaux en entités HTML
+        c'est une fonction de sécurité qui permet de prévenir les injections SQL
+        -->
         <h1><?= htmlspecialchars($menu['titre']) ?></h1>
     </div>
 
@@ -33,6 +37,12 @@ ob_start();
                     </ul>
                 </div>
 
+                <!-- fonction pour les boutons de navigation entre les images -->
+                <!-- si photo = 1 pas de bouton
+                 bouton précédent et suivant 
+                 un dot par image pour aller à l'image souhaitée
+
+                 -->                        
                 <?php if (count($images) > 1): ?>
                     <button type="button" class="menu-gallery-btn menu-gallery-prev" aria-label="Image précédente">
                         <span aria-hidden="true">‹</span>
@@ -191,6 +201,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const total = pricePerPerson * (parseInt(this.value) || minimum);
             totalPriceElement.textContent = total.toFixed(2).replace('.', ',') + '€';
 
+            // Nouvelle constante pour passer en paramètre le nombre de personnes
             const btnCommander = document.getElementById('btn-commander');
             if (btnCommander) {
                 btnCommander.dataset.navigate = '<?= BASE_URL ?>/commande?menu_id=<?= (int) $menu['menu_id'] ?>&nombre_personne=' + this.value;
