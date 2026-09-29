@@ -48,6 +48,6 @@ class PrixCommandeService {
     }
 
     public function estBordeaux(string $ville): bool {
-        return mb_strtolower(trim($ville)) === mb_strtolower($this->config['ville_livraison_gratuite']);
+        return mb_strtolower(trim($ville)) === mb_strtolower($this->config['ville_livraison_forfait']);
     }
 }
