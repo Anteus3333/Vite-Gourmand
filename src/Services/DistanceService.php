@@ -13,13 +13,16 @@ class DistanceService {
      * Distance routière (km) depuis le centre de Bordeaux jusqu'à l'adresse / ville.
      * Retourne null si le calcul est impossible.
      */
+
+    // float est un nombre à virgule flottante
     public function calculerKm(string $adresse, string $ville): ?float {
         $ville = trim($ville);
         if ($ville === '') {
             return null;
         }
 
-        if (mb_strtolower($ville) === mb_strtolower($this->config['ville_livraison_gratuite'] ?? 'bordeaux')) {
+        // mb_strtolower convertit la ville en minuscules
+        if (mb_strtolower($ville) === mb_strtolower($this->config['ville_livraison_forfait'] ?? 'bordeaux')) {
             return 0.0;
         }
 

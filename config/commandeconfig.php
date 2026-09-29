@@ -2,10 +2,11 @@
 // config/commandeconfig.php — règles métier de la commande (ECF)
 
 return [
-    // Livraison : 5 € + 0,59 €/km hors Bordeaux
+    // Livraison : 5 € forfait ; + 0,59 €/km hors ville forfaitaire
     'livraison_base'          => 5.00,
     'livraison_par_km'        => 0.59,
-    'ville_livraison_gratuite'=> 'bordeaux',
+    // Ville au forfait (pas de majoration km) — la livraison n'est pas gratuite
+    'ville_livraison_forfait' => 'bordeaux',
     // Point de départ pour le calcul auto de distance (centre de Bordeaux)
     'bordeaux_lat'            => 44.8378,
     'bordeaux_lon'            => -0.5792,
