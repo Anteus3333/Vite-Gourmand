@@ -111,7 +111,6 @@ class Router {
                 break;
 
             // --- APIs ---
-            // Pour les calculs de prix et de distance
             case 'api':
                 if ($param === 'filter-menus') {
                     (new MenuController())->filterAPI();

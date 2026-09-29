@@ -422,6 +422,15 @@ class MenuModel {
             LEFT JOIN regime r ON m.regime_id = r.regime_id
             WHERE m.visible = 1
         ";
+        // LEFT JOIN est une jointure qui permet de récupérer 
+        // les données de la table theme et de la table regime
+        // A savoir le nom exact de la table est theme et regime
+        // Plutôt que seulement l'ID
+        // RAPPEL LEFT et pas INNER car INNER ne retourne le menu
+        // que si le menu a un thème et un régime
+        // LEFT retourne le menu même s'il n'a pas de thème ou de régime
+
+
 
         $params = [];
 
@@ -440,6 +449,10 @@ class MenuModel {
         // Filtre par prix maximum
         if (isset($filters['prix_max']) && $filters['prix_max'] !== '') {
             $query .= " AND m.prix_par_personne <= :prix_max";
+
+            // floatval est une fonction qui permet de convertir 
+            // une chaîne de caractères en nombre flottant
+            // pour faciliter la comparaison avec le prix du menu
             $params[':prix_max'] = floatval($filters['prix_max']);
         }
 
@@ -452,6 +465,11 @@ class MenuModel {
         // Filtre par nombre de personnes minimum
         if (!empty($filters['nombre_personne'])) {
             $query .= " AND m.nombre_personne_minimun <= :nombre_personne";
+            
+            // intval est une fonction qui permet de convertir 
+            // une chaîne de caractères en entier
+            // pour faciliter la comparaison avec le nombre de 
+            // personnes minimum du menu
             $params[':nombre_personne'] = intval($filters['nombre_personne']);
         }
 
@@ -459,6 +477,9 @@ class MenuModel {
 
         $stmt = $this->conn->prepare($query);
         $stmt->execute($params);
+
+        // attacherCouvertures est une fonction qui permet de 
+        // récupérer les couvertures des menus (images)
         return $this->attacherCouvertures($stmt->fetchAll() ?: []);
     }
 

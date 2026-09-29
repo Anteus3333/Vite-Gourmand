@@ -44,6 +44,8 @@ class CommandeController {
         $titrePage   = 'Commander - Vite et Gourmand';
         $erreurs     = [];
         $erreurConditions = false;
+
+        // Flash message de confirmation de commande
         $confirmationCommande = null;
         if (!empty($_SESSION['commande_confirmation'])) {
             $confirmationCommande = $_SESSION['commande_confirmation'];
@@ -58,6 +60,7 @@ class CommandeController {
         }
         $nbPrefill = (int) ($_GET['nombre_personne'] ?? 0);
 
+        // $old est un tableau qui contient les données du formulaire
         $old = [
             'nom'               => $utilisateur['nom'] ?? '',
             'prenom'            => $utilisateur['prenom'] ?? '',
@@ -74,10 +77,13 @@ class CommandeController {
         ];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+            // On parcourt le tableau $old et on vérifie si le champ est vide
             foreach ($old as $champ => $inutilise) {
                 if ($champ === 'accepte_conditions') {
                     $old[$champ] = isset($_POST[$champ]) ? '1' : '';
-                } else {
+                } 
+                else {
                     $old[$champ] = trim($_POST[$champ] ?? '');
                 }
             }
@@ -163,9 +169,15 @@ class CommandeController {
             $menuSelectionne = $menu;
         }
 
+        // On affiche le tarif
+        // Si le menu est sélectionné et le nombre de personnes est supérieur à 0, 
+        // on calcule le tarif
         $tarifAffiche = null;
         if ($menuSelectionne && (int) $old['nombre_personne'] > 0) {
+
+            // On calcule la distance en km
             $distanceKm = (float) str_replace(',', '.', $old['distance_km']);
+            // On calcule le tarif
             $tarifAffiche = $this->prixService->calculer(
                 $menuSelectionne,
                 max((int) $old['nombre_personne'], (int) $menuSelectionne['nombre_personne_minimun']),

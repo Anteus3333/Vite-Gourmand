@@ -150,11 +150,16 @@ class CommandeModel {
         return in_array($this->normaliserStatut($statut), $this->config['statuts_annulables'], true);
     }
 
+    // Renvoie un statut compréhensible par l'utilisateur
+    // ex "en_attente" -> "En attente de validation"
     public function libelleStatut(string $statut): string {
         $key = $this->normaliserStatut($statut);
         return $this->config['libelles_statut'][$key] ?? ucfirst(str_replace('_', ' ', $key));
     }
 
+    // fonction appellée en public pour les vues
+    // même objectif que normaliserStatut mais elle est private et appellé pour
+    // l'usage interne au Model
     public function cleStatut(string $statut): string {
         return $this->normaliserStatut($statut);
     }
@@ -199,19 +204,30 @@ class CommandeModel {
      */
     public function getEnCours(int $limit = 5): array {
         $exclus = ['en_attente', 'terminee', 'annulee'];
+
+        // array_filter filtre les commandes en fonction du statut
         $enCours = array_values(array_filter(
             $this->getAllToutes(),
             fn(array $c): bool => !in_array($this->normaliserStatut($c['statut'] ?? ''), $exclus, true)
         ));
 
+        // usort trie les commandes par date de prestation et heure de livraison
         usort($enCours, static function (array $a, array $b): int {
             $cmp = strcmp((string) ($a['date_prestation'] ?? ''), (string) ($b['date_prestation'] ?? ''));
             if ($cmp !== 0) {
                 return $cmp;
             }
+
+            // strcmp permet d'ordonner les heures de livraison
+            // si les heures sont égales, on trie par date de prestation
             return strcmp((string) ($a['heure_livraison'] ?? ''), (string) ($b['heure_livraison'] ?? ''));
         });
 
+        // array_slice retourne les $limit premières commandes
+        // max(0, $limit) permet de s'assurer que le nombre de commandes retournées 
+        // est positif
+        // $limit est le paramètre de cette fonction pour retourner 
+        // au max les 5 plus urgentes
         return array_slice($enCours, 0, max(0, $limit));
     }
 
@@ -513,12 +529,16 @@ class CommandeModel {
         return $this->normaliserStatut($statut) === 'terminee';
     }
 
+    // Normalise le statut de la commande
+    // On remplace les espaces par des underscores et les accents 
+    // par les lettres correspondantes
     private function normaliserStatut(string $statut): string {
         $statut = mb_strtolower(trim($statut));
         $statut = str_replace([' ', 'é', 'è', 'ê'], ['_', 'e', 'e', 'e'], $statut);
         return $statut;
     }
 
+    // Ajoute un suivi à la commande avec un statut dans la table suivi_commande
     private function ajouterSuivi(string $numero, string $statut, ?string $note = null): void {
         $this->conn->prepare("
             INSERT INTO suivi_commande (numero_commande, statut, commentaire)
