@@ -34,12 +34,16 @@ class DistanceService {
         $originLat = (float) ($this->config['bordeaux_lat'] ?? 44.8378);
         $originLon = (float) ($this->config['bordeaux_lon'] ?? -0.5792);
 
+        // itineraireKm est une fonction qui permet de calculer la distance entre 
+        // deux points sur la terre en utilisant l'algorithme OSRM
+        // entre coord Bordeaux et coord destination
         $km = $this->itineraireKm($originLon, $originLat, $dest['lon'], $dest['lat']);
         if ($km === null) {
             // Secours si OSRM est bloqué chez l'hébergeur : estimation vol d'oiseau × 1,3
             $km = $this->haversineKm($originLat, $originLon, $dest['lat'], $dest['lon']) * 1.3;
         }
 
+        // round arrondit le résultat à 1 décimale
         return round(max(0, $km), 1);
     }
 
@@ -64,6 +68,8 @@ class DistanceService {
             'countrycodes' => 'fr',
         ]);
 
+        // httpJson est une fonction qui permet de récupérer les données 
+        // depuis l'URL en format JSON
         $data = $this->httpJson($url);
         if (!is_array($data) || empty($data[0]['lat']) || empty($data[0]['lon'])) {
             return null;
@@ -96,6 +102,9 @@ class DistanceService {
         ];
     }
 
+    // itineraireKm est une fonction qui permet de calculer la distance entre 
+    // deux points sur la terre en utilisant l'algorithme OSRM
+    // Moteur d'itinéraire Open Source souvent basé sur OpenStreetMap
     private function itineraireKm(float $lon1, float $lat1, float $lon2, float $lat2): ?float {
         $url = sprintf(
             'https://router.project-osrm.org/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=false',
@@ -118,6 +127,8 @@ class DistanceService {
         return ((float) $metres) / 1000;
     }
 
+    // haversineKm est une fonction qui permet de calculer la distance entre 
+    // deux points sur la terre en utilisant l'algorithme Haversine
     private function haversineKm(float $lat1, float $lon1, float $lat2, float $lon2): float {
         $r = 6371.0;
         $dLat = deg2rad($lat2 - $lat1);

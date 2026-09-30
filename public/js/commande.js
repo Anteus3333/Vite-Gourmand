@@ -1,9 +1,17 @@
 // public/js/commande.js — calcul dynamique du prix + distance auto (ECF)
+
 document.addEventListener('DOMContentLoaded', () => {
+
     const form = document.getElementById('commande-form');
     if (!form) return;
 
+    // querySelector est une fonction qui permet de sélectionner un élément du DOM
     const page = document.querySelector('.commande-page');
+
+    // dataset est une propriété qui permet de récupérer les données d'un élément du DOM
+    // form.action.replace(/\/commande$/, '') permet de remplacer 
+    // la dernière partie de l'URL par '' (sans le /commande)
+    // Si page?.dataset.baseUrl est défini, on l'utilise, sinon on utilise form.action.replace(/\/commande$/, '')
     const siteBase = page?.dataset.baseUrl || form.action.replace(/\/commande$/, '');
 
     const menuSelect    = document.getElementById('menu_id');
@@ -19,6 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const conditionsText= document.getElementById('conditions-text');
     const minimumHint   = document.getElementById('minimum-hint');
 
+    // variable pour définir un temporisateur pour le calcul de distance
+    // Pas d'appel de l'API à chaque frappe pour éviter un effet de spam 
+    // avec des requêtes inutiles
     let distanceTimer = null;
 
     function estBordeaux(ville) {
@@ -43,10 +54,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         distanceInput.value = n;
         if (distanceValeur) {
+
+            // toFixed est une méthode qui permet de formater un nombre
+            // 1 est le nombre de décimales
+            // . est le séparateur de décimales
+            // , est le séparateur de milliers
             distanceValeur.textContent = n.toFixed(1).replace('.', ',');
         }
     }
 
+    // toggleDistance est une fonction qui permet de cacher ou d'afficher 
+    // la distance en fonction de la ville
     function toggleDistance() {
         const horsBdx = !estBordeaux(villeInput.value);
         distanceGroup.style.display = horsBdx ? '' : 'none';
@@ -56,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // updateConditions est une fonction qui permet de mettre à jour les conditions 
+    // et recalculer le prix
     function updateConditions() {
         const opt = menuSelect.selectedOptions[0];
         if (!opt || !opt.value) {
@@ -83,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return parseFloat(n).toFixed(2).replace('.', ',') + ' €';
     }
 
+    // renderRecap est une fonction qui permet de rendre le recap de la commande
     function renderRecap(data) {
         const t = data.tarif;
         let html = '<dl class="recap-list">';
@@ -100,6 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
         recapContent.innerHTML = html;
     }
 
+    // escapeHtml est une fonction qui permet d'échapper les caractères HTML
+    // pour éviter les injections XSS
     function escapeHtml(text) {
         const d = document.createElement('div');
         d.textContent = text;
@@ -170,7 +193,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 700);
     }
 
+
+    // Ecoute sur input ou change pour mettre à jour les conditions et recalculer le prix
     menuSelect.addEventListener('change', () => { updateConditions(); recalculerPrix(); });
+    
     nbInput.addEventListener('input', () => {
         appliquerMinimumPersonnes();
         recalculerPrix();
@@ -179,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appliquerMinimumPersonnes();
         recalculerPrix();
     });
+
     adresseInput?.addEventListener('change', calculerDistanceAuto);
     adresseInput?.addEventListener('blur', calculerDistanceAuto);
     villeInput.addEventListener('change', calculerDistanceAuto);
@@ -201,6 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const erreurConditions = document.getElementById('erreur-conditions');
     if (erreurConditions) {
+        // scrollIntoView est une méthode qui permet de faire défiler la page 
+        // jusqu'à l'élément
         erreurConditions.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
@@ -220,6 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.textContent = label || 'Validation en cours…';
     }
 
+    // champsPersonnalisesOk est une fonction qui permet de vérifier 
+    // si les champs personnalisés sont valides (date, heure, etc.)
     function champsPersonnalisesOk() {
         const dateReq = form.querySelector('[data-date-value][required]');
         if (dateReq && !dateReq.value) return false;
@@ -236,9 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             return;
         }
+        // checkValidity est une méthode qui permet de vérifier 
+        // si les champs du formulaire sont valides (required, type, etc.)
         if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
             return;
         }
+        // champsPersonnalisesOk est une fonction qui permet de vérifier 
+        // si les champs personnalisés sont valides (date, heure, etc.)
         if (!champsPersonnalisesOk()) {
             return;
         }

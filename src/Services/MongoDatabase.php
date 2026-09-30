@@ -1,6 +1,15 @@
 <?php
 // src/Services/MongoDatabase.php — connexion MongoDB Atlas (ECF NoSQL)
 
+// Comme on est en MongoDB, on ne peut pas utiliser les Models MySQL
+// Donc on a ce fichier pour la connexion à MongoDB
+// Et StatsMongoService pour les stats
+
+// Par contre comme pour Services/SqlDatabase.php, on a un fichier de configuration
+// config/mongodb.php
+// Et un fichier de configuration local config/mongodb.local.php
+// Pour ne pas commiter les identifiants de connexion à MongoDB
+
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use MongoDB\Client;

@@ -5,16 +5,21 @@ require_once __DIR__ . '/MongoDatabase.php';
 require_once __DIR__ . '/../Models/CommandeModel.php';
 require_once __DIR__ . '/../Models/MenuModel.php';
 
+// Regex est une classe qui permet de manipuler les expressions régulières
+// Arborescence d'installation de MongoDB dans vendor
 use MongoDB\BSON\Regex;
 
 class StatsMongoService {
 
+    // le ? permet de dire que la variable peut être null
     private static ?string $derniereErreur = null;
 
     public function derniereErreur(): ?string {
+        // self::$derniereErreur est une variable statique qui contient la dernière erreur
         return self::$derniereErreur;
     }
 
+    // Check si MongoDB est disponible et configuré
     public function estDisponible(): bool {
         self::$derniereErreur = null;
 
@@ -29,7 +34,8 @@ class StatsMongoService {
         try {
             MongoDatabase::client()->selectDatabase(MongoDatabase::config()['database'])->command(['ping' => 1]);
             return true;
-        } catch (Throwable $e) {
+        } 
+        catch (Throwable $e) {
             self::$derniereErreur = $e->getMessage();
             return false;
         }
@@ -43,10 +49,16 @@ class StatsMongoService {
         $commandeModel = new CommandeModel();
         $lignes = $commandeModel->getAllPourStatsMongo();
         $col = MongoDatabase::collection();
+
+        // Suppression de toutes les commandes dans la collection MongoDB
+        // deleteMany est une méthode de la classe MongoDB\Collection
         $col->deleteMany([]);
 
         $ops = [];
         foreach ($lignes as $ligne) {
+
+            // Conversion de la ligne MySQL en document MongoDB
+            // documentDepuisLigne est une méthode de la classe StatsMongoService
             $doc = $this->documentDepuisLigne($ligne);
             $ops[] = [
                 'replaceOne' => [
@@ -63,13 +75,25 @@ class StatsMongoService {
 
         // Bulk par paquets
         $ecrits = 0;
+
+        // array_chunk est une fonction qui permet de diviser un tableau 
+        // en plusieurs tableaux de taille 100
         foreach (array_chunk($ops, 100) as $chunk) {
             $result = $col->bulkWrite($chunk);
+
+            // getUpsertedCount est une méthode de la classe MongoDB\BulkWriteResult
+            // cas : document abscent et créé par cette fonction
+            // getModifiedCount est une méthode de la classe MongoDB\BulkWriteResult
+            // document présent et modifié par cette fonction
+            // getInsertedCount est une méthode de la classe MongoDB\BulkWriteResult
+            // insertion classique
             $ecrits += $result->getUpsertedCount() + $result->getModifiedCount() + $result->getInsertedCount();
         }
         return max($ecrits, count($lignes));
     }
 
+    // Appellé quand création/annulation d'une commande ou modif statut
+    // Donc à l'unité de commande. Pas une sync générale
     /** Upsert d'une commande (création / changement de statut). */
     public function enregistrerCommande(array $commande): void {
         if (!MongoDatabase::estConfigure()) {
@@ -82,7 +106,8 @@ class StatsMongoService {
                 $doc,
                 ['upsert' => true]
             );
-        } catch (Throwable $e) {
+        } 
+        catch (Throwable $e) {
             // Ne bloque pas le métier MySQL si Atlas est indisponible
             error_log('StatsMongoService: ' . $e->getMessage());
         }
@@ -107,6 +132,11 @@ class StatsMongoService {
         ];
 
         $parMenu = [];
+
+        // aggregate est une méthode de la classe MongoDB\Collection
+        // aggregation veut dire que l'on va appliquer un pipeline à la collection
+        // pipeline est un tableau de stages
+        // stages sont les étapes du pipeline
         foreach (MongoDatabase::collection()->aggregate($pipeline) as $row) {
             $id = (int) $row['_id'];
             $parMenu[$id] = [
@@ -145,6 +175,7 @@ class StatsMongoService {
             ];
         }
 
+        // usort est une fonction qui permet de trier un tableau
         usort($rows, static function (array $a, array $b): int {
             $cmp = $b['nb_commandes'] <=> $a['nb_commandes'];
             return $cmp !== 0 ? $cmp : strcmp($a['menu_titre'], $b['menu_titre']);
@@ -194,6 +225,7 @@ class StatsMongoService {
         return $match;
     }
 
+    // Conversion de la ligne MySQL en document MongoDB
     private function documentDepuisLigne(array $ligne): array {
         $statut = mb_strtolower(trim((string) ($ligne['statut'] ?? '')));
         $statut = str_replace([' ', 'é', 'è', 'ê'], ['_', 'e', 'e', 'e'], $statut);
