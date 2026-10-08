@@ -166,7 +166,7 @@ class CommandeModel {
 
     /** Toutes les commandes (espace employé), filtres statut et client optionnels */
     public function getAllToutes(?string $filtreStatut = null, ?int $clientId = null): array {
-        $sql = "
+        $query = "
             SELECT c.*, m.titre AS menu_titre, m.menu_id,
                    u.prenom AS client_prenom, u.nom AS client_nom,
                    u.email AS client_email, u.telephone AS client_telephone
@@ -188,12 +188,12 @@ class CommandeModel {
         }
 
         if ($conditions) {
-            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+            $query .= ' WHERE ' . implode(' AND ', $conditions);
         }
 
-        $sql .= ' ORDER BY c.date_commande DESC, c.numero_commande DESC';
+        $query .= ' ORDER BY c.date_commande DESC, c.numero_commande DESC';
 
-        $stmt = $this->conn->prepare($sql);
+        $stmt = $this->conn->prepare($query);
         $stmt->execute($params);
         return $stmt->fetchAll() ?: [];
     }
@@ -333,7 +333,7 @@ class CommandeModel {
      * @return array<int, array{menu_id: int, menu_titre: string, nb_commandes: int, chiffre_affaires: float}>
      */
     public function getStatsParMenu(?string $dateDebut = null, ?string $dateFin = null, ?int $menuId = null): array {
-        $sql = "
+        $query = "
             SELECT m.menu_id,
                    m.titre AS menu_titre,
                    COUNT(c.numero_commande) AS nb_commandes,
@@ -360,10 +360,10 @@ class CommandeModel {
         }
 
         if ($conditions) {
-            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+            $query .= ' WHERE ' . implode(' AND ', $conditions);
         }
 
-        $sql .= "
+        $query .= "
             GROUP BY m.menu_id, m.titre
             HAVING nb_commandes > 0 OR :sans_filtre_date = 1
             ORDER BY nb_commandes DESC, m.titre ASC
@@ -372,7 +372,7 @@ class CommandeModel {
         $sansFiltreDate = ($dateDebut === null || $dateDebut === '') && ($dateFin === null || $dateFin === '') ? 1 : 0;
         $params[':sans_filtre_date'] = $sansFiltreDate;
 
-        $stmt = $this->conn->prepare($sql);
+        $stmt = $this->conn->prepare($query);
         $stmt->execute($params);
         $rows = $stmt->fetchAll() ?: [];
 
@@ -388,7 +388,7 @@ class CommandeModel {
 
     /** Totaux commandes et CA pour une période / menu donnés (hors annulées). */
     public function getTotauxStats(?string $dateDebut = null, ?string $dateFin = null, ?int $menuId = null): array {
-        $sql = "
+        $query = "
             SELECT COUNT(c.numero_commande) AS nb_commandes,
                    COALESCE(SUM(c.prix_menu + c.prix_livraison), 0) AS chiffre_affaires
             FROM Commande c
@@ -398,19 +398,19 @@ class CommandeModel {
         $params = [];
 
         if ($dateDebut !== null && $dateDebut !== '') {
-            $sql .= ' AND c.date_commande >= :date_debut';
+            $query .= ' AND c.date_commande >= :date_debut';
             $params[':date_debut'] = $dateDebut;
         }
         if ($dateFin !== null && $dateFin !== '') {
-            $sql .= ' AND c.date_commande <= :date_fin';
+            $query .= ' AND c.date_commande <= :date_fin';
             $params[':date_fin'] = $dateFin;
         }
         if ($menuId !== null && $menuId > 0) {
-            $sql .= ' AND cm.menu_id = :menu_id';
+            $query .= ' AND cm.menu_id = :menu_id';
             $params[':menu_id'] = $menuId;
         }
 
-        $stmt = $this->conn->prepare($sql);
+        $stmt = $this->conn->prepare($query);
         $stmt->execute($params);
         $row = $stmt->fetch() ?: [];
 

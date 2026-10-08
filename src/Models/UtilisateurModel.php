@@ -13,20 +13,20 @@ class UtilisateurModel {
     }
 
     // Recherche un utilisateur par son adresse mail (sert au login et à l'inscription)
-    public function findByEmail(string $email) {
+    public function findByEmail(string $email): ?array {
         $stmt = $this->conn->prepare("SELECT * FROM utilisateur WHERE email = :email");
         $stmt->execute([':email' => $email]);
         return $stmt->fetch() ?: null;
     }
 
-    public function findById(int $id) {
+    public function findById(int $id): ?array {
         $stmt = $this->conn->prepare("SELECT * FROM utilisateur WHERE utilisateur_id = :id");
         $stmt->execute([':id' => $id]);
         return $stmt->fetch() ?: null;
     }
 
     // Récupère le libellé du rôle d'un utilisateur (ex: 'utilisateur', 'employe', 'administrateur')
-    public function getRole(int $utilisateurId) {
+    public function getRole(int $utilisateurId): ?string {
         $stmt = $this->conn->prepare("SELECT libelle FROM role WHERE utilisateur_id = :id LIMIT 1");
         $stmt->execute([':id' => $utilisateurId]);
         $row = $stmt->fetch();
@@ -183,7 +183,7 @@ class UtilisateurModel {
     }
 
     // Retrouve l'utilisateur correspondant à un jeton encore valide (non expiré)
-    public function findByValidResetToken(string $token) {
+    public function findByValidResetToken(string $token): ?array {
         $stmt = $this->conn->prepare("
             SELECT * FROM utilisateur
             WHERE reset_token = :token AND reset_expire > NOW()

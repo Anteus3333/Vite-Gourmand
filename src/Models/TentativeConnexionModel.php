@@ -36,7 +36,8 @@ class TentativeConnexionModel {
             AND date_tentative > DATE_SUB(NOW(), INTERVAL " . self::FENETRE_MINUTES . " MINUTE)
         ");
         $stmt->execute([':email' => $email, ':ip' => $ip]);
-        return (int) $stmt->fetch()['nb'];
+        $row = $stmt->fetch() ?: [];
+        return (int) ($row['nb'] ?? 0);
     }
 
     /** Compte les envois récents d'un formulaire (email marqueur + IP) */
@@ -58,7 +59,8 @@ class TentativeConnexionModel {
             AND date_tentative > DATE_SUB(NOW(), INTERVAL {$fenetre} MINUTE)
         ");
         $stmt->execute([':email' => $email, ':ip' => $ip]);
-        return (int) $stmt->fetch()['nb'];
+        $row = $stmt->fetch() ?: [];
+        return (int) ($row['nb'] ?? 0);
     }
 
     /** Compte tous les envois d'un marqueur (toutes IP) — anti-flood global */
@@ -82,7 +84,8 @@ class TentativeConnexionModel {
             AND date_tentative > DATE_SUB(NOW(), INTERVAL {$fenetre} MINUTE)
         ");
         $stmt->execute([':email' => $email]);
-        return (int) $stmt->fetch()['nb'];
+        $row = $stmt->fetch() ?: [];
+        return (int) ($row['nb'] ?? 0);
     }
 
     // Enregistre un échec de connexion

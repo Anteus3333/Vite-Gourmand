@@ -91,6 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
         appliquerMinimumPersonnes();
     }
 
+
+    // fonction qui sert à faire respecter le minimum de personnes
     function appliquerMinimumPersonnes() {
         const min = parseInt(nbInput.min, 10) || 1;
         const val = parseInt(nbInput.value, 10) || 0;
@@ -146,6 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(siteBase + '/api/calcul-prix?' + params.toString())
             .then(r => r.json())
             .then(data => {
+
+                // renderRecap est une fonction définie dans ce JS
                 if (data.success) renderRecap(data);
             })
             .catch(err => console.error('Erreur calcul prix:', err));
@@ -221,8 +225,11 @@ document.addEventListener('DOMContentLoaded', () => {
         afficherDistance(distanceInput.value);
     }
     if (!estBordeaux(villeInput.value) && villeInput.value.trim() !== '') {
+        
+        // Cette fonction appelle dans sa définition la fonction recalculerPrix()
         calculerDistanceAuto();
-    } else if (menuSelect.value) {
+    } 
+    else if (menuSelect.value) {
         recalculerPrix();
     }
 

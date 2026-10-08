@@ -13,9 +13,10 @@ class AvisModel {
     }
 
     // Méthode pour récupérer les avis à afficher sur l'accueil
-    public function getAvisValides() {
-        // On fait une jointure avec la table utilisateur pour récupérer le prénom de l'auteur
-        // (la table utilisateur n'a pas de colonne 'nom', et la validation se fait via 'statut')
+    public function getAvisValides(): array {
+        // On fait une jointure avec la table utilisateur pour récupérer le prénom 
+        // de l'auteur de l'avis qui se trouve dans la table utilisateur
+        // le lien se fait via la clé étrangère utilisateur_id
         
         // la lettre a est une variable 
         // pour récupérer le contenu de la table avis
@@ -37,11 +38,14 @@ class AvisModel {
             LIMIT 3
         ";
 
+        // A noter qu'on fait ici une requête préparée mais pas de variable
+        // entrée par l'utilisateur, donc pas de risque d'injection SQL
+        // Donc ici c'est plus pour homogénéiser le code sur les Models.php
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
 
         // On retourne tous les résultats sous forme de tableau associatif
-        return $stmt->fetchAll();
+        return $stmt->fetchAll() ?: [];
     }
 
     /** Avis en attente de modération (espace employé) */
@@ -67,7 +71,7 @@ class AvisModel {
     // Donc qu'il peut être vide ou non
 
     public function getAll(?string $statut = null): array {
-        $sql = "
+        $query = "
             SELECT a.*, u.prenom, u.nom, u.email
             FROM avis a
             JOIN utilisateur u ON a.utilisateur_id = u.utilisateur_id
@@ -76,13 +80,13 @@ class AvisModel {
         $params = [];
         // Si le paramètre $statut n'est pas vide ou non, alors on ajoute la condition WHERE a.statut = :statut
         if ($statut !== null && $statut !== '') {
-            $sql .= " WHERE a.statut = :statut";
+            $query .= " WHERE a.statut = :statut";
             $params[':statut'] = $statut;
         }
         // le .= est un opérateur de concaténation
-        $sql .= " ORDER BY a.avis_id DESC";
+        $query .= " ORDER BY a.avis_id DESC";
 
-        $stmt = $this->conn->prepare($sql);
+        $stmt = $this->conn->prepare($query);
         $stmt->execute($params);
         return $stmt->fetchAll() ?: [];
     }
@@ -94,6 +98,8 @@ class AvisModel {
     }
 
     public function compterEnAttente(): int {
+
+        // fetchColumn() est une méthode qui permet de récupérer une seule valeur
         return (int) $this->conn->query("SELECT COUNT(*) FROM avis WHERE statut = 'en_attente'")->fetchColumn();
     }
 

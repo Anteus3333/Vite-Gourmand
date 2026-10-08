@@ -18,7 +18,7 @@ class MenuModel {
      * Récupère tous les menus avec leurs informations associées.
      * @param bool $uniquementVisibles true = catalogue public / commande
      */
-    public function getAllMenus(bool $uniquementVisibles = false) {
+    public function getAllMenus(bool $uniquementVisibles = false): array {
         $query = "
             SELECT 
                 m.menu_id,
@@ -56,7 +56,7 @@ class MenuModel {
     // Cette fonction est appelée par le fichier menu.js
     // Le menu est retourné sous forme de tableau associatif
     // Le tableau associatif contient les informations du menu
-    public function getMenuById(int $menuId) {
+    public function getMenuById(int $menuId): ?array {
         $query = "
             SELECT 
                 m.menu_id,
@@ -324,7 +324,7 @@ class MenuModel {
     /**
      * Récupère les plats d'un menu
      */
-    public function getPlatsByMenuId(int $menuId) {
+    public function getPlatsByMenuId(int $menuId): array {
         $query = "
             SELECT 
                 p.plat_id,
@@ -345,7 +345,7 @@ class MenuModel {
     /**
      * Récupère les allergènes des plats d'un menu
      */
-    public function getAllergensByMenuId(int $menuId) {
+    public function getAllergensByMenuId(int $menuId): array {
         $query = "
             SELECT DISTINCT 
                 a.allergene_id,
@@ -367,7 +367,7 @@ class MenuModel {
     /**
      * Récupère tous les thèmes pour les filtres
      */
-    public function getAllThemes() {
+    public function getAllThemes(): array {
         $query = "SELECT theme_id, libelle FROM theme ORDER BY libelle ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -377,7 +377,7 @@ class MenuModel {
     /**
      * Récupère tous les régimes pour les filtres
      */
-    public function getAllRegimes() {
+    public function getAllRegimes(): array {
         $query = "SELECT regime_id, libelle FROM regime ORDER BY libelle ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -387,7 +387,7 @@ class MenuModel {
     /**
      * Récupère le prix minimum et maximum des menus pour les filtres
      */
-    public function getPriceRange() {
+    public function getPriceRange(): array {
         $query = "
             SELECT 
                 MIN(prix_par_personne) AS prix_min,
@@ -403,7 +403,7 @@ class MenuModel {
     /**
      * Filtre les menus selon les critères
      */
-    public function filterMenus(array $filters = []) {
+    public function filterMenus(array $filters = []): array {
         $query = "
             SELECT 
                 m.menu_id,

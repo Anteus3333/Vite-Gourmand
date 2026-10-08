@@ -203,6 +203,9 @@ class CommandeController {
         $ville       = trim($_GET['ville_livraison'] ?? 'Bordeaux');
         $distanceKm  = (float) str_replace(',', '.', $_GET['distance_km'] ?? '0');
 
+        // fonction définie dans PrixCommandeService.php
+        // ce fichier réunit les règles métier de calcul du prix
+        // nombre de personnes, ville, distance...
         $tarif = $this->prixService->calculer($menu, $nbPersonnes, $ville, $distanceKm);
 
         echo json_encode([
