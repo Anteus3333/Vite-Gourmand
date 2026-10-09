@@ -50,26 +50,26 @@ class AvisModel {
 
     /** Avis en attente de modération (espace employé) */
     public function getEnAttente(): array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT a.*, u.prenom, u.nom, u.email
             FROM avis a
             JOIN utilisateur u ON a.utilisateur_id = u.utilisateur_id
             WHERE a.statut = 'en_attente'
             ORDER BY a.avis_id ASC
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt->fetchAll() ?: [];
     }
 
-    /** Tous les avis pour la liste employé (filtre optionnel) */
     
+    /** Tous les avis pour la liste employé (filtre optionnel) */
     // Décomposition du paramètre ?string $statut = null
     // $statut = nom du paramètre (valide, en_attente, refuse)
     // string = type de donnée (chaîne de caractères)
     // null = valeur par défaut (null)
     // ? devant le type de donnée signifie que le paramètre est optionnel
     // Donc qu'il peut être vide ou non
-
     public function getAll(?string $statut = null): array {
         $query = "
             SELECT a.*, u.prenom, u.nom, u.email
@@ -92,29 +92,32 @@ class AvisModel {
     }
 
     public function findById(int $id): ?array {
-        $stmt = $this->conn->prepare("SELECT * FROM avis WHERE avis_id = :id");
+        $query = "SELECT * FROM avis WHERE avis_id = :id";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch() ?: null;
     }
 
+    
+
     public function compterEnAttente(): int {
+        
+        $query = "SELECT COUNT(*) FROM avis WHERE statut = 'en_attente'";
+        $stmt = $this->conn->query($query);
 
         // fetchColumn() est une méthode qui permet de récupérer une seule valeur
-        return (int) $this->conn->query("SELECT COUNT(*) FROM avis WHERE statut = 'en_attente'")->fetchColumn();
+        return (int) $stmt->fetchColumn();
     }
 
     public function valider(int $id): void {
-        $this->conn->prepare("UPDATE avis SET statut = 'valide' WHERE avis_id = :id")
-            ->execute([':id' => $id]);
+        
+        $stmt = $this->conn->prepare("UPDATE avis SET statut = 'valide' WHERE avis_id = :id");
+        $stmt->execute([':id' => $id]);
     }
 
     public function refuser(int $id): void {
-        $this->conn->prepare("UPDATE avis SET statut = 'refuse' WHERE avis_id = :id")
-            ->execute([':id' => $id]);
-
-        // Aurait pu être divisé en deux lignes de code
-        // $stmt = $this->conn->prepare("UPDATE avis SET statut = 'refuse' WHERE avis_id = :id");
-        // $stmt->execute([':id' => $id]);
+        $stmt = $this->conn->prepare("UPDATE avis SET statut = 'refuse' WHERE avis_id = :id");
+        $stmt->execute([':id' => $id]);
     }
 
     /** Avis déjà déposés par un utilisateur */
@@ -123,7 +126,7 @@ class AvisModel {
     // même si il n'y a pas de correspondance avec la table commande
 
     public function getByUtilisateur(int $utilisateurId): array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT a.*, c.numero_commande, m.titre AS menu_titre
             FROM avis a
             LEFT JOIN Commande c ON a.numero_commande = c.numero_commande
@@ -131,22 +134,28 @@ class AvisModel {
             LEFT JOIN menu m ON cm.menu_id = m.menu_id
             WHERE a.utilisateur_id = :id
             ORDER BY a.avis_id DESC
-        ");
+        ";
+
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':id' => $utilisateurId]);
         return $stmt->fetchAll() ?: [];
     }
 
     /** Avis lié à une commande pour un utilisateur donné */
     public function getPourCommande(string $numero, int $utilisateurId): ?array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT * FROM avis
             WHERE numero_commande = :numero AND utilisateur_id = :id
             LIMIT 1
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':numero' => $numero, ':id' => $utilisateurId]);
         return $stmt->fetch() ?: null;
     }
 
+    // Cette méthode vérifie si un avis existe pour une commande donnée
+    // D'où un type booléen en retour
+    // Pour éviter un double avis
     public function existePourCommande(string $numero, int $utilisateurId): bool {
         return $this->getPourCommande($numero, $utilisateurId) !== null;
     }

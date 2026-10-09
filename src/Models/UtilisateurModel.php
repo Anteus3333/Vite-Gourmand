@@ -14,20 +14,23 @@ class UtilisateurModel {
 
     // Recherche un utilisateur par son adresse mail (sert au login et à l'inscription)
     public function findByEmail(string $email): ?array {
-        $stmt = $this->conn->prepare("SELECT * FROM utilisateur WHERE email = :email");
+        $query = "SELECT * FROM utilisateur WHERE email = :email";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':email' => $email]);
         return $stmt->fetch() ?: null;
     }
 
     public function findById(int $id): ?array {
-        $stmt = $this->conn->prepare("SELECT * FROM utilisateur WHERE utilisateur_id = :id");
+        $query = "SELECT * FROM utilisateur WHERE utilisateur_id = :id";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch() ?: null;
     }
 
     // Récupère le libellé du rôle d'un utilisateur (ex: 'utilisateur', 'employe', 'administrateur')
     public function getRole(int $utilisateurId): ?string {
-        $stmt = $this->conn->prepare("SELECT libelle FROM role WHERE utilisateur_id = :id LIMIT 1");
+        $query = "SELECT libelle FROM role WHERE utilisateur_id = :id LIMIT 1";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':id' => $utilisateurId]);
         $row = $stmt->fetch();
         return $row['libelle'] ?? null;
@@ -84,12 +87,13 @@ class UtilisateurModel {
     // et vérifie que le jeton est valide et non expiré
     // et que l'utilisateur n'a pas encore confirmé son email
     public function findByValidEmailToken(string $token): ?array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT * FROM utilisateur
             WHERE email_token = :token
               AND email_token_expire > NOW()
               AND email_verifie = 0
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':token' => $token]);
         return $stmt->fetch() ?: null;
     }
@@ -184,10 +188,11 @@ class UtilisateurModel {
 
     // Retrouve l'utilisateur correspondant à un jeton encore valide (non expiré)
     public function findByValidResetToken(string $token): ?array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT * FROM utilisateur
             WHERE reset_token = :token AND reset_expire > NOW()
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':token' => $token]);
         return $stmt->fetch() ?: null;
     }
@@ -227,14 +232,15 @@ class UtilisateurModel {
 
     /** Liste des comptes employé (administration) */
     public function getEmployes(): array {
-        $stmt = $this->conn->query("
+        $query = "
             SELECT u.utilisateur_id, u.email, u.prenom, u.nom, u.telephone,
                    u.adresse_postale, u.code_postal, u.ville, u.actif
             FROM utilisateur u
             INNER JOIN role r ON r.utilisateur_id = u.utilisateur_id
             WHERE r.libelle = 'employe'
             ORDER BY u.nom ASC, u.prenom ASC
-        ");
+        ";
+        $stmt = $this->conn->query($query);
         return $stmt->fetchAll() ?: [];
     }
 
@@ -314,11 +320,13 @@ class UtilisateurModel {
             return false;
         }
 
-        $stmtCmd = $this->conn->prepare('SELECT COUNT(*) FROM Commande WHERE utilisateur_id = :id');
+        $query = 'SELECT COUNT(*) FROM Commande WHERE utilisateur_id = :id';
+        $stmtCmd = $this->conn->prepare($query);
         $stmtCmd->execute([':id' => $utilisateurId]);
         $nbCmd = (int) $stmtCmd->fetchColumn();
 
-        $stmtAvis = $this->conn->prepare('SELECT COUNT(*) FROM avis WHERE utilisateur_id = :id');
+        $query = 'SELECT COUNT(*) FROM avis WHERE utilisateur_id = :id';
+        $stmtAvis = $this->conn->prepare($query);
         $stmtAvis->execute([':id' => $utilisateurId]);
         $nbAvis = (int) $stmtAvis->fetchColumn();
 
@@ -328,8 +336,8 @@ class UtilisateurModel {
 
         try {
             $this->conn->beginTransaction();
-            $this->conn->prepare('DELETE FROM role WHERE utilisateur_id = :id AND libelle = \'employe\'')
-                ->execute([':id' => $utilisateurId]);
+            $stmt = $this->conn->prepare('DELETE FROM role WHERE utilisateur_id = :id AND libelle = \'employe\'');
+            $stmt->execute([':id' => $utilisateurId]);
             $stmt = $this->conn->prepare('DELETE FROM utilisateur WHERE utilisateur_id = :id');
             $stmt->execute([':id' => $utilisateurId]);
             if ($stmt->rowCount() === 0) {
@@ -398,10 +406,11 @@ class UtilisateurModel {
 
             $this->conn->beginTransaction();
 
-            $this->conn->prepare('DELETE FROM avis WHERE utilisateur_id = :id')
-                ->execute([':id' => $utilisateurId]);
+            $stmt = $this->conn->prepare('DELETE FROM avis WHERE utilisateur_id = :id');
+            $stmt->execute([':id' => $utilisateurId]);
 
-            $stmtCmd = $this->conn->prepare('SELECT numero_commande FROM Commande WHERE utilisateur_id = :id');
+            $query = 'SELECT numero_commande FROM Commande WHERE utilisateur_id = :id';
+            $stmtCmd = $this->conn->prepare($query);
             $stmtCmd->execute([':id' => $utilisateurId]);
             $numeros = $stmtCmd->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
@@ -410,11 +419,11 @@ class UtilisateurModel {
                 $delLien->execute([':numero' => $numero]);
             }
 
-            $this->conn->prepare('DELETE FROM Commande WHERE utilisateur_id = :id')
-                ->execute([':id' => $utilisateurId]);
+            $stmt = $this->conn->prepare('DELETE FROM Commande WHERE utilisateur_id = :id');
+            $stmt->execute([':id' => $utilisateurId]);
 
-            $this->conn->prepare('DELETE FROM role WHERE utilisateur_id = :id')
-                ->execute([':id' => $utilisateurId]);
+            $stmt = $this->conn->prepare('DELETE FROM role WHERE utilisateur_id = :id');
+            $stmt->execute([':id' => $utilisateurId]);
 
             $stmtUser = $this->conn->prepare('DELETE FROM utilisateur WHERE utilisateur_id = :id');
             $stmtUser->execute([':id' => $utilisateurId]);

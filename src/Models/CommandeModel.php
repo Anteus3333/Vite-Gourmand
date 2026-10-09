@@ -47,14 +47,16 @@ class CommandeModel {
             ':utilisateur_id'  => $commande['utilisateur_id'],
         ]);
 
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             INSERT INTO commande_menu (numero_commande, menu_id) VALUES (:numero, :menu_id)
-        ")->execute([':numero' => $numero, ':menu_id' => $menuId]);
+        ");
+        $stmt->execute([':numero' => $numero, ':menu_id' => $menuId]);
 
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             UPDATE menu SET quantite_restante = quantite_restante - 1
             WHERE menu_id = :menu_id AND quantite_restante > 0
-        ")->execute([':menu_id' => $menuId]);
+        ");
+        $stmt->execute([':menu_id' => $menuId]);
 
         $this->ajouterSuivi($numero, $commande['statut']);
 
@@ -63,39 +65,42 @@ class CommandeModel {
 
     /** Liste des commandes d'un utilisateur (plus récentes en premier) */
     public function getByUtilisateur(int $utilisateurId): array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT c.*, m.titre AS menu_titre, m.menu_id
             FROM Commande c
             JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
             JOIN menu m ON cm.menu_id = m.menu_id
             WHERE c.utilisateur_id = :id
             ORDER BY c.date_commande DESC, c.numero_commande DESC
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':id' => $utilisateurId]);
         return $stmt->fetchAll() ?: [];
     }
 
     /** Détail d'une commande (vérifie qu'elle appartient à l'utilisateur) */
     public function getByNumeroPourUtilisateur(string $numero, int $utilisateurId): ?array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT c.*, m.titre AS menu_titre, m.menu_id, m.nombre_personne_minimun, m.prix_par_personne
             FROM Commande c
             JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
             JOIN menu m ON cm.menu_id = m.menu_id
             WHERE c.numero_commande = :numero AND c.utilisateur_id = :id
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':numero' => $numero, ':id' => $utilisateurId]);
         return $stmt->fetch() ?: null;
     }
 
     /** Historique de suivi d'une commande */
     public function getSuivi(string $numero): array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT statut, commentaire, date_modification
             FROM suivi_commande
             WHERE numero_commande = :numero
             ORDER BY date_modification ASC, suivi_id ASC
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':numero' => $numero]);
         return $stmt->fetchAll() ?: [];
     }
@@ -131,13 +136,15 @@ class CommandeModel {
 
     /** Annule une commande et restitue le stock du menu */
     public function annuler(string $numero, int $menuId): void {
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             UPDATE Commande SET statut = 'annulee' WHERE numero_commande = :numero
-        ")->execute([':numero' => $numero]);
+        ");
+        $stmt->execute([':numero' => $numero]);
 
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             UPDATE menu SET quantite_restante = quantite_restante + 1 WHERE menu_id = :id
-        ")->execute([':id' => $menuId]);
+        ");
+        $stmt->execute([':id' => $menuId]);
 
         $this->ajouterSuivi($numero, 'annulee');
     }
@@ -245,18 +252,19 @@ class CommandeModel {
 
     /** Clients ayant passé au moins une commande (filtre employé). */
     public function getClientsAvecCommandes(): array {
-        $stmt = $this->conn->query("
+        $query = "
             SELECT DISTINCT u.utilisateur_id, u.prenom, u.nom, u.email
             FROM utilisateur u
             INNER JOIN Commande c ON c.utilisateur_id = u.utilisateur_id
             ORDER BY u.nom ASC, u.prenom ASC, u.email ASC
-        ");
+        ";
+        $stmt = $this->conn->query($query);
         return $stmt->fetchAll() ?: [];
     }
 
     /** Détail commande pour l'employé (sans filtre utilisateur) */
     public function getByNumero(string $numero): ?array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT c.*, m.titre AS menu_titre, m.menu_id,
                    u.prenom AS client_prenom, u.nom AS client_nom,
                    u.email AS client_email, u.telephone AS client_telephone,
@@ -266,18 +274,20 @@ class CommandeModel {
             JOIN menu m ON cm.menu_id = m.menu_id
             JOIN utilisateur u ON c.utilisateur_id = u.utilisateur_id
             WHERE c.numero_commande = :numero
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':numero' => $numero]);
         return $stmt->fetch() ?: null;
     }
 
     /** Compteurs par statut pour le tableau de bord employé */
     public function compterParStatut(): array {
-        $stmt = $this->conn->query("
+        $query = "
             SELECT statut, COUNT(*) AS total
             FROM Commande
             GROUP BY statut
-        ");
+        ";
+        $stmt = $this->conn->query($query);
         $counts = [];
         foreach ($stmt->fetchAll() ?: [] as $row) {
             $counts[$this->normaliserStatut($row['statut'] ?? '')] = (int) $row['total'];
@@ -287,7 +297,7 @@ class CommandeModel {
 
     /** Export MySQL → Mongo (tous les documents stats). */
     public function getAllPourStatsMongo(): array {
-        $stmt = $this->conn->query("
+        $query = "
             SELECT c.numero_commande,
                    DATE(c.date_commande) AS date_commande,
                    c.prix_menu,
@@ -300,13 +310,14 @@ class CommandeModel {
             INNER JOIN commande_menu cm ON cm.numero_commande = c.numero_commande
             INNER JOIN menu m ON m.menu_id = cm.menu_id
             ORDER BY c.date_commande ASC, c.numero_commande ASC
-        ");
+        ";
+        $stmt = $this->conn->query($query);
         return $stmt->fetchAll() ?: [];
     }
 
     /** Une commande + menu pour upsert Mongo. */
     public function getPourStatsMongo(string $numero): ?array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT c.numero_commande,
                    DATE(c.date_commande) AS date_commande,
                    c.prix_menu,
@@ -320,7 +331,8 @@ class CommandeModel {
             INNER JOIN menu m ON m.menu_id = cm.menu_id
             WHERE c.numero_commande = :numero
             LIMIT 1
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':numero' => $numero]);
         $row = $stmt->fetch();
         return $row ?: null;
@@ -438,21 +450,23 @@ class CommandeModel {
             return false;
         }
 
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             UPDATE Commande SET
                 statut = 'annulee',
                 motif_annulation = :motif,
                 mode_contact_annulation = :mode_contact
             WHERE numero_commande = :numero
-        ")->execute([
+        ");
+        $stmt->execute([
             ':motif'         => $motif,
             ':mode_contact'  => $modeContact,
             ':numero'        => $numero,
         ]);
 
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             UPDATE menu SET quantite_restante = quantite_restante + 1 WHERE menu_id = :id
-        ")->execute([':id' => $menuId]);
+        ");
+        $stmt->execute([':id' => $menuId]);
 
         $note = 'Motif : ' . $motif . ' — Contact client : ' . $this->libelleModeContact($modeContact);
         $this->ajouterSuivi($numero, 'annulee', $note);
@@ -482,14 +496,16 @@ class CommandeModel {
             return false;
         }
 
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             UPDATE Commande SET statut = :statut WHERE numero_commande = :numero
-        ")->execute([':statut' => $nouveau, ':numero' => $numero]);
+        ");
+        $stmt->execute([':statut' => $nouveau, ':numero' => $numero]);
 
         if ($nouveau === 'annulee' && $actuel !== 'annulee') {
-            $this->conn->prepare("
+            $stmt = $this->conn->prepare("
                 UPDATE menu SET quantite_restante = quantite_restante + 1 WHERE menu_id = :id
-            ")->execute([':id' => $menuId]);
+            ");
+            $stmt->execute([':id' => $menuId]);
         }
 
         $this->ajouterSuivi($numero, $nouveau);
@@ -498,10 +514,11 @@ class CommandeModel {
 
     /** Met à jour les indicateurs de prêt / restitution du matériel */
     public function setMateriel(string $numero, bool $pret, bool $restitution): void {
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             UPDATE Commande SET pret_materiel = :pret, restitution_materiel = :restitution
             WHERE numero_commande = :numero
-        ")->execute([
+        ");
+        $stmt->execute([
             ':pret'          => $pret ? 1 : 0,
             ':restitution'   => $restitution ? 1 : 0,
             ':numero'        => $numero,
@@ -510,7 +527,7 @@ class CommandeModel {
 
     /** Commandes terminées éligibles à un avis (pas encore d'avis déposé) */
     public function getTermineesSansAvis(int $utilisateurId): array {
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT c.*, m.titre AS menu_titre, m.menu_id
             FROM Commande c
             JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
@@ -520,7 +537,8 @@ class CommandeModel {
               AND LOWER(REPLACE(REPLACE(c.statut, ' ', '_'), 'é', 'e')) = 'terminee'
               AND a.avis_id IS NULL
             ORDER BY c.date_prestation DESC
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':id' => $utilisateurId]);
         return $stmt->fetchAll() ?: [];
     }
@@ -540,10 +558,11 @@ class CommandeModel {
 
     // Ajoute un suivi à la commande avec un statut dans la table suivi_commande
     private function ajouterSuivi(string $numero, string $statut, ?string $note = null): void {
-        $this->conn->prepare("
+        $stmt = $this->conn->prepare("
             INSERT INTO suivi_commande (numero_commande, statut, commentaire)
             VALUES (:numero, :statut, :commentaire)
-        ")->execute([
+        ");
+        $stmt->execute([
             ':numero'      => $numero,
             ':statut'      => $this->normaliserStatut($statut),
             ':commentaire' => $note,

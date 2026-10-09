@@ -29,12 +29,13 @@ class TentativeConnexionModel {
         // Constante défini au début de la classe TentativeConnexionModel
         // self signifie que la constante est définie dans la classe TentativeConnexionModel
 
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT COUNT(*) AS nb
             FROM tentative_connexion
             WHERE (email = :email OR ip = :ip)
             AND date_tentative > DATE_SUB(NOW(), INTERVAL " . self::FENETRE_MINUTES . " MINUTE)
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':email' => $email, ':ip' => $ip]);
         $row = $stmt->fetch() ?: [];
         return (int) ($row['nb'] ?? 0);
@@ -52,12 +53,13 @@ class TentativeConnexionModel {
 
     public function compterExact(string $email, string $ip, ?int $fenetreMinutes = null): int {
         $fenetre = max(1, $fenetreMinutes ?? self::FENETRE_MINUTES);
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT COUNT(*) AS nb
             FROM tentative_connexion
             WHERE email = :email AND ip = :ip
             AND date_tentative > DATE_SUB(NOW(), INTERVAL {$fenetre} MINUTE)
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':email' => $email, ':ip' => $ip]);
         $row = $stmt->fetch() ?: [];
         return (int) ($row['nb'] ?? 0);
@@ -77,12 +79,13 @@ class TentativeConnexionModel {
 
     public function compterMarqueur(string $email, int $fenetreMinutes): int {
         $fenetre = max(1, $fenetreMinutes);
-        $stmt = $this->conn->prepare("
+        $query = "
             SELECT COUNT(*) AS nb
             FROM tentative_connexion
             WHERE email = :email
             AND date_tentative > DATE_SUB(NOW(), INTERVAL {$fenetre} MINUTE)
-        ");
+        ";
+        $stmt = $this->conn->prepare($query);
         $stmt->execute([':email' => $email]);
         $row = $stmt->fetch() ?: [];
         return (int) ($row['nb'] ?? 0);
