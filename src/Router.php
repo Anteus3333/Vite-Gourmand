@@ -10,16 +10,20 @@ require_once __DIR__ . '/Controllers/CompteController.php';
 require_once __DIR__ . '/Controllers/EmployeController.php';
 require_once __DIR__ . '/Controllers/AdminController.php';
 
+
+// Appelé quand les codes BASE_URL.... ne pointent pas vers des fichiers statiques
+// tel que style.css ou favicon.svg
+
 class Router {
     public function dispatch($url) {
         // Parse l'URL pour extraire la route principale et les paramètres
 
-        // Ex layout.php gènère un lien URL BASE_URL + mentions-legales
-        // ce qui fait en local http://localhost/Studi_ECF/public/mentions-legales
-        // Et le .htaccess transforme cette URL en http://localhost/mentions-legales
-        // Et le Router transforme cette URL en "mentions-legales"
-        // Et le Controller LegalController gère la requête et génère la page mentions-legales.php
-        // Et la page mentions-legales.php génère le contenu de la page mentions-legales.
+        // Ex layout.php génère un lien BASE_URL + /mentions-legales
+        // → http://localhost/Studi_ECF/public/mentions-legales
+        // .htaccess réécrit vers index.php?url=mentions-legales
+        // index.php récupère $_GET['url'] et appelle $router->dispatch($url)
+        // Router route vers LegalController
+        // LegalController charge la vue mentions-legales.php
 
         
         $parts = explode('/', trim($url, '/'));

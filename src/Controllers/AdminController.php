@@ -42,6 +42,7 @@ class AdminController {
 
         $utiliserMongo = ($statsSourceChoisie === 'mongodb') && $mongoDispo;
 
+        // Si l'utilisateur a choisi MongoDB et qu'il est disponible
         if ($utiliserMongo) {
             try {
                 $statsMenus = $this->statsMongo->getStatsParMenu(
@@ -55,7 +56,9 @@ class AdminController {
                     $filtres['menu_id']
                 );
                 $statsSource = 'mongodb';
-            } catch (Throwable $e) {
+            } 
+            // Si erreur type coupure Atlas ou pb sur les méthodes MongoDB
+            catch (Throwable $e) {
                 $statsErreur = $e->getMessage();
                 $statsMenus = $this->commandeModel->getStatsParMenu(
                     $filtres['date_debut'],
@@ -68,7 +71,12 @@ class AdminController {
                     $filtres['menu_id']
                 );
             }
-        } else {
+        } 
+
+        // Si l'utilisateur a choisi MySQL 
+        // ou si l'utilisater a choisi MongoDB et que MongoDB n'est pas disponible
+        else {
+            // récupère les erreurs de MongoDB
             if ($statsSourceChoisie === 'mongodb' && !$mongoDispo) {
                 $detail = $this->statsMongo->derniereErreur();
                 $statsErreur = $detail
@@ -76,7 +84,8 @@ class AdminController {
                 // Indice fréquent Atlas : TLS « internal error » = IP non whitelistée
                 if ($detail && (stripos($detail, 'TLS') !== false || stripos($detail, 'ssl') !== false)) {
                     $statsErreur .= ' — Vérifiez Network Access Atlas (IP actuelle autorisée, ou 0.0.0.0/0 pour la démo).';
-                } elseif ($detail && (stripos($detail, 'socket timeout') !== false || stripos($detail, 'connection timeout') !== false)) {
+                } 
+                elseif ($detail && (stripos($detail, 'socket timeout') !== false || stripos($detail, 'connection timeout') !== false)) {
                     $statsErreur .= ' — Le serveur web n’atteint pas Atlas (pare-feu Infomaniak : ouvrir le port sortant 27017, ou Network Access Atlas).';
                 }
             }
@@ -94,9 +103,18 @@ class AdminController {
 
         $nbMenus      = $this->menuModel->compterMenus();
         $stockFaible  = $this->menuModel->getMenusStockFaible();
+
+        // C'est un array qui est retourné par cette méthode
         $compteurs    = $this->commandeModel->compterParStatut();
+        // D'où array_sum() pour faire la somme de tous les éléments de l'array
+        // array_sum() possible car retourne un entier et 
+        // le tableau est rempli de 0 ou de 1
         $nbCommandes  = array_sum($compteurs);
+
+        // ici count car on fait la somme du nombre de lignes d'un tableau
+        // qui contient des strings
         $nbEmployes   = count($this->utilisateurModel->getEmployes());
+
         $menusListe   = $this->menuModel->getAllMenus();
 
         $titrePage = 'Administration - Vite et Gourmand';
@@ -107,6 +125,8 @@ class AdminController {
     public function statsSyncMongo(): void {
         $this->exigerAdmin();
 
+        // Vérifie que la méthode est POST et que le token CSRF est valide
+        // Csrf possible car ce bouton est dans une balise form avec une méthode POST
         if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !Csrf::verifier()) {
             $_SESSION['flash_erreur'] = 'Action non autorisée.';
             header('Location: ' . BASE_URL . '/admin');
@@ -122,26 +142,51 @@ class AdminController {
         try {
             $nb = $this->statsMongo->synchroniserDepuisMysql();
             $_SESSION['flash_succes'] = "Stats synchronisées vers MongoDB Atlas ($nb document(s)).";
-        } catch (Throwable $e) {
+        } 
+        catch (Throwable $e) {
             $_SESSION['flash_erreur'] = 'Sync Mongo échouée : ' . $e->getMessage();
         }
 
+        // Redirige vers la page admin avec le paramètre stats=mongodb
+        // Evite une erreur en restant sur le POST (en cas de rechargement de la page)
         header('Location: ' . BASE_URL . '/admin?stats=mongodb');
         exit;
     }
 
-    /** Source affichée : session + override GET ?stats=mysql|mongodb */
+
+    // Fonction pour voir quelle source l'admin a choisi
+    // par contre ne vérifie pas la dispo de MongoDB 
+    // La dispo se fait quand est appellé estDisponible() dans statsMongo.php
+    // Cette fonction retourne une chaine mysql ou mongodb
     private function resoudreSourceStats(): string {
+
         $autorisees = ['mysql', 'mongodb'];
+
+        // Lit les paramètres de l'URL ?stats=....
         $get = strtolower(trim($_GET['stats'] ?? ''));
+
+        // Si la valeur URL est bien mysql ou mongodb
         if (in_array($get, $autorisees, true)) {
+
+            // On mémorise cette valeur dans la session
             $_SESSION['stats_source'] = $get;
+
+            // On retourne la valeur et ça clôture la fonction
             return $get;
         }
+
+        // Si le if précédent n'a pas été exécuté
+        // On regarde ce qui existe déjà dans la session
+        // Si rien n'existe, on retourne mongodb par défaut
         $session = strtolower(trim((string) ($_SESSION['stats_source'] ?? 'mongodb')));
+
+        // On retourne la valeur et ça clôture la fonction
+        // Si une valeur existe, mais n'est pas autorisée, on retourne mongodb
         return in_array($session, $autorisees, true) ? $session : 'mongodb';
     }
 
+
+    // Récupérer les données du formulaire filtres stats sur la page admin
     private function extraireFiltresStats(): array {
         $dateDebut = trim($_GET['date_debut'] ?? '');
         $dateFin   = trim($_GET['date_fin'] ?? '');
@@ -163,6 +208,7 @@ class AdminController {
             'menu_id'    => ($menuId !== null && $menuId > 0) ? $menuId : null,
         ];
     }
+
 
     /** Liste des comptes employé */
     public function employes(): void {
@@ -320,6 +366,9 @@ class AdminController {
         $this->actionEmployeActif($id, true);
     }
 
+    // Retourne un array avec les champs vides
+    // Permet de préparer les champs vide pour l'ajout d'un nouvel employé
+    // ou de remplir correctement les champs d'un employé existant
     private function champsEmployeVides(): array {
         return [
             'prenom' => '', 'nom' => '', 'email' => '', 'telephone' => '',
@@ -335,34 +384,56 @@ class AdminController {
         return $old;
     }
 
+    // Vérifie les champs employé et retourne un array avec les erreurs
+    // Utilisé en création et en modification d'un employé
     private function validerChampsEmploye(array $old): array {
+
         $erreurs = [];
         if ($old['prenom'] === '') $erreurs[] = 'Le prénom est obligatoire.';
         if ($old['nom'] === '')    $erreurs[] = 'Le nom est obligatoire.';
+
+        // Vérifie que l'email est valide
         if (!filter_var($old['email'], FILTER_VALIDATE_EMAIL)) {
             $erreurs[] = "L'adresse mail n'est pas valide.";
         }
+
         if ($old['adresse_postale'] === '') $erreurs[] = "L'adresse postale est obligatoire.";
+        
         if ($old['code_postal'] === '') {
             $erreurs[] = 'Le code postal est obligatoire.';
-        } elseif (!preg_match('/^\d{5}$/', $old['code_postal'])) {
+        } 
+        elseif (!preg_match('/^\d{5}$/', $old['code_postal'])) {
             $erreurs[] = 'Le code postal doit contenir 5 chiffres.';
         }
+
         if ($old['ville'] === '') $erreurs[] = 'La ville est obligatoire.';
+
         return $erreurs;
     }
 
+
+    // --------------------------------------------------------------
+    // Fonctions utilisés sur des taches relevant de l'admin ou délégation employé
+    // --------------------------------------------------------------
+
+    // Construit les URLs admin
     protected function gestionBasePath(): string {
         return '/admin';
     }
 
+    // passe le bon fichier nav à la vue admin (donc le bon menu)
+    // Même principe dans EmployeController.php avec Views/employe/_nav.php
     protected function gestionNavFile(): string {
         return __DIR__ . '/../Views/admin/_nav.php';
     }
 
+    // Exige que l'utilisateur soit admin
     protected function exigerGestionAcces(): void {
         $this->exigerAdmin();
     }
+
+
+    // --------------------------------------------------------------
 
     private function actionEmployeActif(int $id, bool $actif): void {
         $this->exigerAdmin();
