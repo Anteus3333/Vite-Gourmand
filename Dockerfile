@@ -3,9 +3,11 @@ FROM php:8.2-apache
 
 # Extensions PHP (PDO MySQL, GD, MongoDB pour stats admin)
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
-RUN install-php-extensions pdo_mysql gd mongodb zip
+# mongodb 1.21.x : compatible avec mongodb/mongodb 1.21 du composer.lock
+# (l’extension 2.x casse composer install avec ce lock)
+RUN install-php-extensions pdo_mysql gd mongodb-1.21.0 zip
 
-# Composer
+# Composer (install des packages au démarrage via entrypoint)
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # DocumentRoot = public/ + réécriture d'URL (.htaccess)
@@ -19,13 +21,6 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-av
     && a2enconf document-root-directory
 
 WORKDIR /var/www/html
-
-# Dépendances PHP (vendor) — le code source est monté en volume en local
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
-    || composer install --no-interaction --no-scripts
-
-COPY . .
 
 COPY docker/entrypoint.sh /usr/local/bin/app-entrypoint.sh
 RUN chmod +x /usr/local/bin/app-entrypoint.sh \
