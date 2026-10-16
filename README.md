@@ -15,7 +15,8 @@ Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, m
 
 - [Stack technique](#stack-technique)
 - [Prérequis](#prérequis)
-- [Installation locale (pas à pas)](#installation-locale-pas-à-pas)
+- [Installation avec Docker (recommandé)](#installation-avec-docker-recommandé)
+- [Installation locale Laragon (alternative)](#installation-locale-laragon-alternative)
 - [Configuration](#configuration)
 - [Lancement](#lancement)
 - [Comptes de test](#comptes-de-test)
@@ -40,7 +41,7 @@ Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, m
 | Base de données | **MySQL / MariaDB** (source de vérité) |
 | Stats admin (ECF) | **MongoDB Atlas** optionnel (sync depuis MySQL) |
 | Front-end | HTML5, CSS3 (Flexbox / Grid, mobile first), JavaScript vanilla |
-| Serveur | Apache + `mod_rewrite` (Laragon en local, Infomaniak en prod) |
+| Serveur | Apache + `mod_rewrite` (**Docker** en local ECF, Infomaniak en prod ; Laragon en alternative) |
 | Authentification | Sessions PHP, mots de passe hashés (`password_hash` / bcrypt) |
 | Sécurité | CSRF, échappement XSS, limitation des tentatives de connexion, AuthGuard par rôle |
 | Dépendances | Composer (`mongodb/mongodb` pour les stats) |
@@ -49,15 +50,63 @@ Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, m
 
 ## Prérequis
 
-- **PHP** 8.0+ (extensions `pdo_mysql`, `session`, `gd` recommandée pour l’upload d’images)
+### Avec Docker (recommandé pour l’ECF)
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows / macOS) ou Docker Engine + Compose
+- **Arrêter Laragon** avant de démarrer (conflit possible sur les ports **80** et **3306**)
+
+### Sans Docker (Laragon)
+
+- **PHP** 8.1+ (extensions `pdo_mysql`, `session`, `gd` recommandée)
 - **MySQL** ou **MariaDB**
 - **Apache** avec `mod_rewrite`
-- **Composer** (pour MongoDB / stats admin — optionnel si stats MySQL seules)
-- En local : [Laragon](https://laragon.org/), XAMPP ou équivalent
+- **Composer**
+- [Laragon](https://laragon.org/) ou équivalent
 
 ---
 
-## Installation locale (pas à pas)
+## Installation avec Docker (recommandé)
+
+Un nouveau développeur clone le dépôt et lance la stack complète (Apache/PHP 8.2 + MySQL 8) :
+
+```bash
+git clone https://github.com/Anteus3333/Vite-Gourmand.git
+cd Vite-Gourmand
+docker compose up -d --build
+```
+
+| Service | Rôle | Accès |
+|---------|------|--------|
+| `web` | PHP 8.2 + Apache (`DocumentRoot` = `public/`) | [http://localhost:8080](http://localhost:8080) |
+| `db` | MySQL 8 — schéma + données de test au 1er démarrage | `127.0.0.1:3306` |
+
+Identifiants MySQL (conteneur) : utilisateur `vite` / mot de passe `vite` (root : `root`).  
+La connexion PHP utilise les variables d’environnement `DB_*` définies dans `docker-compose.yml` (pas besoin de `database.local.php`).
+
+**HeidiSQL** (comme avec Laragon) : nouvelle session → hôte `127.0.0.1`, port `3306`, user `vite` / `vite` (ou `root` / `root`).
+
+Arrêt :
+
+```bash
+docker compose down
+```
+
+Réinitialiser la base (recrée les volumes + réimporte `sql/`) :
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+Fichiers Docker versionnés : `Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`.
+
+> **Node.js** : non inclus dans Compose — le front est en HTML/CSS/JS vanilla (pas de build Vite/Webpack).
+
+E-mails / MongoDB Atlas : mêmes options qu’en local classique (voir ci-dessous).
+
+---
+
+## Installation locale Laragon (alternative)
 
 ### 1. Cloner le dépôt
 
@@ -115,7 +164,8 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 
 | Fichier | Rôle |
 |---------|------|
-| `config/database.php` + `database.local.php` | Paramètres MySQL |
+| `config/database.php` + `database.local.php` | Paramètres MySQL (ou variables `DB_*` sous Docker) |
+| `Dockerfile` + `docker-compose.yml` | Stack locale Apache/PHP/MySQL |
 | `src/Services/SqlDatabase.php` | Connexion PDO MySQL |
 | `config/gmail.php` + `gmail.local.php` | SMTP Gmail / simulation |
 | `src/Services/GmailMailer.php` | Envoi des e-mails |
@@ -129,9 +179,9 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 
 ## Lancement
 
-1. Démarrer Laragon (Apache + MySQL)
-2. Ouvrir : **http://localhost/Studi_ECF/public/**  
-   (adapter le nom de dossier si besoin)
+**Docker :** après `docker compose up -d --build` → [http://localhost:8080](http://localhost:8080)
+
+**Laragon :** démarrer Apache + MySQL, puis ouvrir **http://localhost/Studi_ECF/public/**
 
 Le front controller est `public/index.php`. En production, le **DocumentRoot** doit pointer vers `public/`.
 
@@ -165,7 +215,10 @@ Vite-Gourmand/
 │   ├── Services/           # GmailMailer, CSRF, AuthGuard, upload images, Mongo…
 │   └── Router.php
 ├── config/
-├── sql/                    # schema + fixtures + migrations
+├── sql/                    # schema + fixtures (import auto sous Docker)
+├── docker/                 # entrypoint Apache/PHP
+├── Dockerfile              # Image PHP 8.2 + Apache
+├── docker-compose.yml      # Services web + MySQL
 ├── docs/                   # Déploiement, parcours, rapport ECF
 ├── scripts/                # sync_stats_mongo.php (stats admin Mongo)
 ├── composer.json
