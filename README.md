@@ -17,6 +17,7 @@ Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, m
 - [Prérequis](#prérequis)
 - [Installation avec Docker (recommandé)](#installation-avec-docker-recommandé)
 - [Installation locale Laragon (alternative)](#installation-locale-laragon-alternative)
+- [Accès aux données (pattern Repository)](#accès-aux-données-pattern-repository)
 - [Configuration](#configuration)
 - [Lancement](#lancement)
 - [Comptes de test](#comptes-de-test)
@@ -163,6 +164,21 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 
 ---
 
+## Accès aux données (pattern Repository)
+
+Les **Controllers** ne parlent pas directement à la base : ils délèguent à des **Repositories**.
+
+| Couche | Fichiers | Rôle |
+|--------|----------|------|
+| Connexion SQL | `src/Services/SqlDatabase.php` | PDO MySQL centralisé |
+| Connexion NoSQL | `src/Services/MongoDatabase.php` | Client MongoDB Atlas |
+| Repositories SQL | `src/Repositories/*Repository.php` | Requêtes MySQL par entité (utilisateur, commande, menu…) |
+| Repository NoSQL | `src/Repositories/CommandeStatsRepository.php` | Documents stats commandes (agrégations Mongo) |
+
+Exemple côté controller : `$this->utilisateurRepository->findByEmail($email)`.
+
+---
+
 ## Configuration
 
 | Fichier | Rôle |
@@ -170,6 +186,7 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 | `config/database.php` + `database.local.php` | Paramètres MySQL (ou variables `DB_*` sous Docker) |
 | `Dockerfile` + `docker-compose.yml` | Stack locale Apache/PHP/MySQL |
 | `src/Services/SqlDatabase.php` | Connexion PDO MySQL |
+| `src/Repositories/` | Accès données SQL + NoSQL (pattern Repository) |
 | `config/gmail.php` + `gmail.local.php` | SMTP Gmail / simulation |
 | `src/Services/GmailMailer.php` | Envoi des e-mails |
 | `config/commandeconfig.php` | Tarifs livraison, délais, workflow statuts |
@@ -213,9 +230,9 @@ Vite-Gourmand/
 │   ├── css/  js/  images/
 ├── src/
 │   ├── Controllers/        # Auth, Menu, Commande, Compte, Employé, Admin…
-│   ├── Models/             # Accès BDD (PDO)
+│   ├── Repositories/       # Accès données SQL (PDO) + NoSQL (Mongo stats)
 │   ├── Views/              # Templates PHP
-│   ├── Services/           # GmailMailer, CSRF, AuthGuard, upload images, Mongo…
+│   ├── Services/           # SqlDatabase, MongoDatabase, CSRF, AuthGuard, mails…
 │   └── Router.php
 ├── config/
 ├── sql/                    # schema + fixtures (import auto sous Docker)

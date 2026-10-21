@@ -1,6 +1,6 @@
 <?php
 ob_start();
-$cm = $commandeModel;
+$cm = $commandeRepository;
 $total = (float) $commande['prix_menu'] + (float) $commande['prix_livraison'];
 $modifiable = $cm->peutModifier($commande['statut']);
 $annulable  = $cm->peutAnnuler($commande['statut']);

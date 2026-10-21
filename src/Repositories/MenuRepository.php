@@ -1,9 +1,9 @@
 <?php
-// src/Models/MenuModel.php
+// src/Repositories/MenuRepository.php
 
 require_once __DIR__ . '/../Services/SqlDatabase.php';
 
-class MenuModel {
+class MenuRepository {
     /** Nombre minimal de plats pour pouvoir publier un menu. */
     public const MIN_PLATS_VISIBLE = 3;
 

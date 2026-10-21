@@ -1,9 +1,9 @@
 <?php
-// src/Models/HoraireModel.php
+// src/Repositories/HoraireRepository.php
 
 require_once __DIR__ . '/../Services/SqlDatabase.php';
 
-class HoraireModel {
+class HoraireRepository {
     private $conn;
 
     public function __construct() {

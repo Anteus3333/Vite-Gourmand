@@ -112,10 +112,10 @@
         <?php
 
         //  !isset($resumeHorairesFooter) : si la variable $resumeHorairesFooter n'est pas définie,
-        //  alors on charge le modèle HoraireModel et on récupère les horaires du footer.
+        //  alors on charge le modèle HoraireRepository et on récupère les horaires du footer.
         if (!isset($resumeHorairesFooter)) {
-            require_once __DIR__ . '/../Models/HoraireModel.php';
-            $resumeHorairesFooter = (new HoraireModel())->getResumeFooter();
+            require_once __DIR__ . '/../Repositories/HoraireRepository.php';
+            $resumeHorairesFooter = (new HoraireRepository())->getResumeFooter();
         }
         ?>
         <div class="horaires">

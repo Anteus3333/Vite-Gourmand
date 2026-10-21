@@ -1,6 +1,6 @@
 <?php
 ob_start();
-$cm = $commandeModel;
+$cm = $commandeRepository;
 ?>
 
 <section class="compte-hero employe-hero">

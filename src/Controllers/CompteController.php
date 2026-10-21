@@ -1,29 +1,29 @@
 <?php
 // src/Controllers/CompteController.php
 
-require_once __DIR__ . '/../Models/CommandeModel.php';
-require_once __DIR__ . '/../Models/UtilisateurModel.php';
-require_once __DIR__ . '/../Models/MenuModel.php';
-require_once __DIR__ . '/../Models/AvisModel.php';
+require_once __DIR__ . '/../Repositories/CommandeRepository.php';
+require_once __DIR__ . '/../Repositories/UtilisateurRepository.php';
+require_once __DIR__ . '/../Repositories/MenuRepository.php';
+require_once __DIR__ . '/../Repositories/AvisRepository.php';
 require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 require_once __DIR__ . '/../Services/GmailMailer.php';
-require_once __DIR__ . '/../Services/StatsMongoService.php';
+require_once __DIR__ . '/../Repositories/CommandeStatsRepository.php';
 
 class CompteController {
-    private CommandeModel $commandeModel;
-    private UtilisateurModel $userModel;
-    private MenuModel $menuModel;
-    private AvisModel $avisModel;
+    private CommandeRepository $commandeRepository;
+    private UtilisateurRepository $utilisateurRepository;
+    private MenuRepository $menuRepository;
+    private AvisRepository $avisRepository;
     private PrixCommandeService $prixService;
     private DistanceService $distanceService;
 
     public function __construct() {
-        $this->commandeModel   = new CommandeModel();
-        $this->userModel       = new UtilisateurModel();
-        $this->menuModel       = new MenuModel();
-        $this->avisModel       = new AvisModel();
+        $this->commandeRepository   = new CommandeRepository();
+        $this->utilisateurRepository       = new UtilisateurRepository();
+        $this->menuRepository       = new MenuRepository();
+        $this->avisRepository       = new AvisRepository();
         $this->prixService     = new PrixCommandeService();
         $this->distanceService = new DistanceService();
     }
@@ -31,9 +31,9 @@ class CompteController {
     /** Tableau de bord : accueil espace utilisateur */
     public function index() {
         $this->exigerConnexion();
-        $utilisateur = $this->userModel->findById($this->userId());
-        $commandes   = array_slice($this->commandeModel->getByUtilisateur($this->userId()), 0, 3);
-        $commandeModel = $this->commandeModel;
+        $utilisateur = $this->utilisateurRepository->findById($this->userId());
+        $commandes   = array_slice($this->commandeRepository->getByUtilisateur($this->userId()), 0, 3);
+        $commandeRepository = $this->commandeRepository;
 
         $titrePage = 'Mon compte - Vite et Gourmand';
         require __DIR__ . '/../Views/compte/index.php';
@@ -42,8 +42,8 @@ class CompteController {
     /** Liste de toutes les commandes */
     public function commandes() {
         $this->exigerConnexion();
-        $commandes = $this->commandeModel->getByUtilisateur($this->userId());
-        $commandeModel = $this->commandeModel;
+        $commandes = $this->commandeRepository->getByUtilisateur($this->userId());
+        $commandeRepository = $this->commandeRepository;
         $titrePage = 'Mes commandes - Vite et Gourmand';
         require __DIR__ . '/../Views/compte/cpte_commandes.php';
     }
@@ -51,16 +51,16 @@ class CompteController {
     /** Détail d'une commande + timeline de suivi */
     public function commandeDetail(string $numero) {
         $this->exigerConnexion();
-        $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
+        $commande = $this->commandeRepository->getByNumeroPourUtilisateur($numero, $this->userId());
 
         if (!$commande) {
             $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
-        $suivi     = $this->commandeModel->getSuivi($numero);
-        $avisCommande = $this->avisModel->getPourCommande($numero, $this->userId());
-        $commandeModel = $this->commandeModel;
+        $suivi     = $this->commandeRepository->getSuivi($numero);
+        $avisCommande = $this->avisRepository->getPourCommande($numero, $this->userId());
+        $commandeRepository = $this->commandeRepository;
         $titrePage = 'Commande ' . $numero;
         require __DIR__ . '/../Views/compte/cpte_commande-detail.php';
     }
@@ -68,20 +68,20 @@ class CompteController {
     /** Formulaire de modification (tout sauf le menu) */
     public function commandeModifier(string $numero) {
         $this->exigerConnexion();
-        $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
+        $commande = $this->commandeRepository->getByNumeroPourUtilisateur($numero, $this->userId());
 
         if (!$commande) {
             $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
-        if (!$this->commandeModel->peutModifier($commande['statut'])) {
+        if (!$this->commandeRepository->peutModifier($commande['statut'])) {
             $_SESSION['flash_erreur'] = 'Cette commande ne peut plus être modifiée (déjà acceptée par l\'équipe).';
             header('Location: ' . BASE_URL . '/mon-compte/commande/' . urlencode($numero));
             exit;
         }
 
-        $menu    = $this->menuModel->getMenuById((int) $commande['menu_id']);
+        $menu    = $this->menuRepository->getMenuById((int) $commande['menu_id']);
         $erreurs = [];
         $old = [
             'date_prestation'   => $commande['date_prestation'],
@@ -126,7 +126,7 @@ class CompteController {
 
             if (empty($erreurs)) {
                 $tarif = $this->prixService->calculer($menu, $nbPersonnes, $old['ville_livraison'], $distanceKm);
-                $this->commandeModel->modifier($numero, [
+                $this->commandeRepository->modifier($numero, [
                     'date_prestation'   => $old['date_prestation'],
                     'heure_livraison'   => $old['heure_livraison'],
                     'adresse_livraison' => $old['adresse_livraison'],
@@ -146,7 +146,7 @@ class CompteController {
         $distanceKm   = (float) str_replace(',', '.', $old['distance_km']);
         $tarifAffiche = $this->prixService->calculer($menu, (int) $old['nombre_personne'], $old['ville_livraison'] ?: 'Bordeaux', $distanceKm);
 
-        $commandeModel = $this->commandeModel;
+        $commandeRepository = $this->commandeRepository;
         $titrePage = 'Modifier la commande ' . $numero;
         require __DIR__ . '/../Views/compte/commande-modifier.php';
     }
@@ -161,23 +161,23 @@ class CompteController {
             exit;
         }
 
-        $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
+        $commande = $this->commandeRepository->getByNumeroPourUtilisateur($numero, $this->userId());
         if (!$commande) {
             $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
-        if (!$this->commandeModel->peutAnnuler($commande['statut'])) {
+        if (!$this->commandeRepository->peutAnnuler($commande['statut'])) {
             $_SESSION['flash_erreur'] = 'Cette commande ne peut plus être annulée.';
             header('Location: ' . BASE_URL . '/mon-compte/commande/' . urlencode($numero));
             exit;
         }
 
-        $this->commandeModel->annuler($numero, (int) $commande['menu_id']);
+        $this->commandeRepository->annuler($numero, (int) $commande['menu_id']);
 
-        $docStats = $this->commandeModel->getPourStatsMongo($numero);
+        $docStats = $this->commandeRepository->getPourStatsMongo($numero);
         if ($docStats) {
-            (new StatsMongoService())->enregistrerCommande($docStats);
+            (new CommandeStatsRepository())->enregistrerCommande($docStats);
         }
 
         $_SESSION['flash_succes'] = 'Votre commande a bien été annulée.';
@@ -188,7 +188,7 @@ class CompteController {
     /** Modification des informations personnelles */
     public function profil() {
         $this->exigerConnexion();
-        $utilisateur = $this->userModel->findById($this->userId());
+        $utilisateur = $this->utilisateurRepository->findById($this->userId());
         $erreurs     = [];
         $old = [
             'nom'             => $utilisateur['nom'] ?? '',
@@ -220,7 +220,7 @@ class CompteController {
             if ($old['ville'] === '') $erreurs[] = 'La ville est obligatoire.';
 
             if (empty($erreurs)) {
-                $this->userModel->updateProfil($this->userId(), $old);
+                $this->utilisateurRepository->updateProfil($this->userId(), $old);
                 $_SESSION['utilisateur']['prenom'] = $old['prenom'];
                 $_SESSION['flash_succes'] = 'Vos informations ont bien été mises à jour.';
                 header('Location: ' . BASE_URL . '/mon-compte/profil');
@@ -243,7 +243,7 @@ class CompteController {
             exit;
         }
 
-        $utilisateur = $this->userModel->findById($this->userId());
+        $utilisateur = $this->utilisateurRepository->findById($this->userId());
         $erreursMdp = [];
 
         $actuel       = $_POST['password_actuel'] ?? '';
@@ -270,7 +270,7 @@ class CompteController {
             exit;
         }
 
-        $this->userModel->updatePassword($this->userId(), $nouveau);
+        $this->utilisateurRepository->updatePassword($this->userId(), $nouveau);
         $mailOk = (new GmailMailer())->envoyerAlerteMotDePasseModifie($utilisateur);
         $_SESSION['flash_succes'] = $mailOk
             ? 'Votre mot de passe a bien été modifié. Un e-mail de confirmation vous a été envoyé.'
@@ -310,14 +310,14 @@ class CompteController {
             exit;
         }
 
-        $utilisateur = $this->userModel->findById($this->userId());
+        $utilisateur = $this->utilisateurRepository->findById($this->userId());
         if (!$utilisateur || !password_verify($password, $utilisateur['password'] ?? '')) {
             $_SESSION['flash_erreur'] = 'Mot de passe incorrect. Le compte n\'a pas été supprimé.';
             header('Location: ' . BASE_URL . '/mon-compte/profil');
             exit;
         }
 
-        if (!$this->userModel->supprimerCompteClient($this->userId())) {
+        if (!$this->utilisateurRepository->supprimerCompteClient($this->userId())) {
             $_SESSION['flash_erreur'] = 'La suppression du compte a échoué. Contactez-nous si le problème persiste.';
             header('Location: ' . BASE_URL . '/mon-compte/profil');
             exit;
@@ -334,8 +334,8 @@ class CompteController {
     /** Liste des avis déposés + commandes éligibles */
     public function avis() {
         $this->exigerConnexion();
-        $mesAvis = $this->avisModel->getByUtilisateur($this->userId());
-        $commandesEligibles = $this->commandeModel->getTermineesSansAvis($this->userId());
+        $mesAvis = $this->avisRepository->getByUtilisateur($this->userId());
+        $commandesEligibles = $this->commandeRepository->getTermineesSansAvis($this->userId());
 
         $labelsAvis = [
             'en_attente' => 'En attente de validation',
@@ -350,20 +350,20 @@ class CompteController {
     /** Formulaire de dépôt d'avis sur une commande terminée */
     public function avisCommande(string $numero) {
         $this->exigerConnexion();
-        $commande = $this->commandeModel->getByNumeroPourUtilisateur($numero, $this->userId());
+        $commande = $this->commandeRepository->getByNumeroPourUtilisateur($numero, $this->userId());
 
         if (!$commande) {
             $this->repondreCommandeIntrouvable($numero);
             return;
         }
 
-        if (!$this->commandeModel->estTerminee($commande['statut'])) {
+        if (!$this->commandeRepository->estTerminee($commande['statut'])) {
             $_SESSION['flash_erreur'] = 'Vous ne pouvez laisser un avis que sur une commande terminée.';
             header('Location: ' . BASE_URL . '/mon-compte/commande/' . urlencode($numero));
             exit;
         }
 
-        if ($this->avisModel->existePourCommande($numero, $this->userId())) {
+        if ($this->avisRepository->existePourCommande($numero, $this->userId())) {
             $_SESSION['flash_erreur'] = 'Vous avez déjà déposé un avis pour cette commande.';
             header('Location: ' . BASE_URL . '/mon-compte/avis');
             exit;
@@ -394,14 +394,14 @@ class CompteController {
             }
 
             if (empty($erreurs)) {
-                $this->avisModel->creer($this->userId(), (string) $note, $old['description'], $numero);
+                $this->avisRepository->creer($this->userId(), (string) $note, $old['description'], $numero);
                 $_SESSION['flash_succes'] = 'Merci ! Votre avis a été enregistré et sera publié après validation par notre équipe.';
                 header('Location: ' . BASE_URL . '/mon-compte/avis');
                 exit;
             }
         }
 
-        $commandeModel = $this->commandeModel;
+        $commandeRepository = $this->commandeRepository;
         $titrePage = 'Laisser un avis - Vite et Gourmand';
         require __DIR__ . '/../Views/compte/avis-form.php';
     }
@@ -429,7 +429,7 @@ class CompteController {
     /** Réponse 404 commande : message plus clair si mauvaise session */
     private function repondreCommandeIntrouvable(string $numero): void {
         http_response_code(404);
-        $existe = $this->commandeModel->getByNumero($numero) !== null;
+        $existe = $this->commandeRepository->getByNumero($numero) !== null;
         if ($existe) {
             echo 'Cette commande n\'est pas associée à votre compte. '
                 . 'Connectez-vous avec le compte utilisé pour passer la commande.';

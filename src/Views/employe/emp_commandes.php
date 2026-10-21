@@ -2,7 +2,7 @@
 ob_start();
 $gestionBase = $gestionBase ?? (BASE_URL . '/espace-employe');
 $gestionNavFile = $gestionNavFile ?? __DIR__ . '/emp__nav.php';
-$cm = $commandeModel;
+$cm = $commandeRepository;
 $configStatuts = require __DIR__ . '/../../../config/commandeconfig.php';
 $filtres = array_keys($configStatuts['libelles_statut']);
 

@@ -1,7 +1,7 @@
 <?php
 // src/Controllers/Traits/GestionCommandesAvisTrait.php — commandes et avis (admin + employé)
 
-require_once __DIR__ . '/../../Services/StatsMongoService.php';
+require_once __DIR__ . '/../../Repositories/CommandeStatsRepository.php';
 require_once __DIR__ . '/../../Services/UrlHelper.php';
 require_once __DIR__ . '/../../Services/Csrf.php';
 require_once __DIR__ . '/../../Services/GmailMailer.php';
@@ -19,10 +19,10 @@ trait GestionCommandesAvisTrait {
         $this->exigerGestionAcces();
         $filtre = trim($_GET['statut'] ?? '');
 
-        $commandes = $this->commandeModel->getAllToutes(
+        $commandes = $this->commandeRepository->getAllToutes(
             $filtre !== '' ? $filtre : null
         );
-        $commandeModel = $this->commandeModel;
+        $commandeRepository = $this->commandeRepository;
         $filtreActif = $filtre;
         $gestionBase    = $this->gestionBaseUrl();
         $gestionNavFile = $this->gestionNavFile();
@@ -34,7 +34,7 @@ trait GestionCommandesAvisTrait {
     /** Détail commande + actions */
     public function commandeDetail(string $numero): void {
         $this->exigerGestionAcces();
-        $commande = $this->commandeModel->getByNumero($numero);
+        $commande = $this->commandeRepository->getByNumero($numero);
 
         if (!$commande) {
             http_response_code(404);
@@ -42,12 +42,12 @@ trait GestionCommandesAvisTrait {
             return;
         }
 
-        $suivi       = $this->commandeModel->getSuivi($numero);
-        $transitions = $this->commandeModel->getTransitionsPossibles($commande['statut']);
+        $suivi       = $this->commandeRepository->getSuivi($numero);
+        $transitions = $this->commandeRepository->getTransitionsPossibles($commande['statut']);
         $transitionsStatut = array_values(array_filter($transitions, fn($s) => $s !== 'annulee'));
         $peutAnnulerEmploye = in_array('annulee', $transitions, true);
-        $modesContact = $this->commandeModel->getModesContactAnnulation();
-        $commandeModel = $this->commandeModel;
+        $modesContact = $this->commandeRepository->getModesContactAnnulation();
+        $commandeRepository = $this->commandeRepository;
         $gestionBase    = $this->gestionBaseUrl();
         $gestionNavFile = $this->gestionNavFile();
 
@@ -65,7 +65,7 @@ trait GestionCommandesAvisTrait {
             exit;
         }
 
-        $commande = $this->commandeModel->getByNumero($numero);
+        $commande = $this->commandeRepository->getByNumero($numero);
         if (!$commande) {
             http_response_code(404);
             echo 'Commande introuvable';
@@ -73,17 +73,17 @@ trait GestionCommandesAvisTrait {
         }
 
         $nouveauStatut = trim($_POST['statut'] ?? '');
-        if ($this->commandeModel->changerStatut($numero, $nouveauStatut, (int) $commande['menu_id'])) {
-            $_SESSION['flash_succes'] = 'Statut mis à jour : ' . $this->commandeModel->libelleStatut($nouveauStatut) . '.';
+        if ($this->commandeRepository->changerStatut($numero, $nouveauStatut, (int) $commande['menu_id'])) {
+            $_SESSION['flash_succes'] = 'Statut mis à jour : ' . $this->commandeRepository->libelleStatut($nouveauStatut) . '.';
 
-            $docStats = $this->commandeModel->getPourStatsMongo($numero);
+            $docStats = $this->commandeRepository->getPourStatsMongo($numero);
             if ($docStats) {
-                (new StatsMongoService())->enregistrerCommande($docStats);
+                (new CommandeStatsRepository())->enregistrerCommande($docStats);
             }
 
-            if ($this->commandeModel->estTerminee($nouveauStatut)) {
+            if ($this->commandeRepository->estTerminee($nouveauStatut)) {
                 $this->notifierAvisDisponible($commande);
-            } elseif ($this->commandeModel->cleStatut($nouveauStatut) === 'attente_materiel') {
+            } elseif ($this->commandeRepository->cleStatut($nouveauStatut) === 'attente_materiel') {
                 $this->notifierAttenteMateriel($commande);
             }
         } else {
@@ -104,7 +104,7 @@ trait GestionCommandesAvisTrait {
             exit;
         }
 
-        $commande = $this->commandeModel->getByNumero($numero);
+        $commande = $this->commandeRepository->getByNumero($numero);
         if (!$commande) {
             http_response_code(404);
             echo 'Commande introuvable';
@@ -113,7 +113,7 @@ trait GestionCommandesAvisTrait {
 
         $motif = trim($_POST['motif_annulation'] ?? '');
         $modeContact = trim($_POST['mode_contact'] ?? '');
-        $modesValides = array_keys($this->commandeModel->getModesContactAnnulation());
+        $modesValides = array_keys($this->commandeRepository->getModesContactAnnulation());
         $erreurs = [];
 
         if ($motif === '' || mb_strlen($motif) < 10) {
@@ -129,13 +129,13 @@ trait GestionCommandesAvisTrait {
             exit;
         }
 
-        if ($this->commandeModel->annulerParEmploye($numero, (int) $commande['menu_id'], $motif, $modeContact)) {
+        if ($this->commandeRepository->annulerParEmploye($numero, (int) $commande['menu_id'], $motif, $modeContact)) {
             $_SESSION['flash_succes'] = 'Commande annulée. Le client a été notifié par e-mail.';
             $this->notifierAnnulationEmploye($commande, $motif, $modeContact);
 
-            $docStats = $this->commandeModel->getPourStatsMongo($numero);
+            $docStats = $this->commandeRepository->getPourStatsMongo($numero);
             if ($docStats) {
-                (new StatsMongoService())->enregistrerCommande($docStats);
+                (new CommandeStatsRepository())->enregistrerCommande($docStats);
             }
         } else {
             $_SESSION['flash_erreur'] = 'Cette commande ne peut pas être annulée à ce stade.';
@@ -155,7 +155,7 @@ trait GestionCommandesAvisTrait {
             exit;
         }
 
-        if (!$this->commandeModel->getByNumero($numero)) {
+        if (!$this->commandeRepository->getByNumero($numero)) {
             http_response_code(404);
             echo 'Commande introuvable';
             return;
@@ -163,7 +163,7 @@ trait GestionCommandesAvisTrait {
 
         $pret         = isset($_POST['pret_materiel']);
         $restitution  = isset($_POST['restitution_materiel']);
-        $this->commandeModel->setMateriel($numero, $pret, $restitution);
+        $this->commandeRepository->setMateriel($numero, $pret, $restitution);
 
         $_SESSION['flash_succes'] = 'Suivi matériel enregistré.';
         header('Location: ' . $this->gestionBaseUrl() . '/commande/' . urlencode($numero));
@@ -174,8 +174,8 @@ trait GestionCommandesAvisTrait {
     public function avis(): void {
         $this->exigerGestionAcces();
         $filtre = trim($_GET['statut'] ?? 'en_attente');
-        $avis   = $this->avisModel->getAll($filtre !== 'tous' ? $filtre : null);
-        $nbAttente = $this->avisModel->compterEnAttente();
+        $avis   = $this->avisRepository->getAll($filtre !== 'tous' ? $filtre : null);
+        $nbAttente = $this->avisRepository->compterEnAttente();
         $filtreActif = $filtre;
         $gestionBase    = $this->gestionBaseUrl();
         $gestionNavFile = $this->gestionNavFile();
@@ -203,7 +203,7 @@ trait GestionCommandesAvisTrait {
             exit;
         }
 
-        $avis = $this->avisModel->findById($id);
+        $avis = $this->avisRepository->findById($id);
         if (!$avis || ($avis['statut'] ?? '') !== 'en_attente') {
             $_SESSION['flash_erreur'] = 'Avis introuvable ou déjà traité.';
             header('Location: ' . $this->gestionBaseUrl() . '/avis');
@@ -211,10 +211,10 @@ trait GestionCommandesAvisTrait {
         }
 
         if ($action === 'valider') {
-            $this->avisModel->valider($id);
+            $this->avisRepository->valider($id);
             $_SESSION['flash_succes'] = 'Avis publié sur le site.';
         } else {
-            $this->avisModel->refuser($id);
+            $this->avisRepository->refuser($id);
             $_SESSION['flash_succes'] = 'Avis refusé.';
         }
 
@@ -283,7 +283,7 @@ trait GestionCommandesAvisTrait {
 
         $prenom = trim($commande['client_prenom'] ?? '');
         $numero = $commande['numero_commande'];
-        $modeLibelle = $this->commandeModel->libelleModeContact($modeContact);
+        $modeLibelle = $this->commandeRepository->libelleModeContact($modeContact);
         $salut = $prenom !== '' ? htmlspecialchars($prenom) : '';
 
         $html = '<p>Bonjour' . ($salut !== '' ? ' ' . $salut : '') . ',</p>'

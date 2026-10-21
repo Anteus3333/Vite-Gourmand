@@ -1,10 +1,11 @@
 <?php
-// src/Models/UtilisateurModel.php
-// Interroge la table utilisateur de la base de données
+// src/Repositories/UtilisateurRepository.php
+// Repository SQL : accès données table utilisateur (pattern DAO / Repository ECF)
+// Les Controllers appellent ce repository — aucune requête SQL dans les Controllers.
 
 require_once __DIR__ . '/../Services/SqlDatabase.php';
 
-class UtilisateurModel {
+class UtilisateurRepository {
     private $conn;
 
     public function __construct() {

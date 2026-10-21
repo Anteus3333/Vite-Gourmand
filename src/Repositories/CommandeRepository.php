@@ -1,9 +1,9 @@
 <?php
-// src/Models/CommandeModel.php
+// src/Repositories/CommandeRepository.php
 
 require_once __DIR__ . '/../Services/SqlDatabase.php';
 
-class CommandeModel {
+class CommandeRepository {
     private $conn;
     private array $config;
 

@@ -100,7 +100,7 @@ $bannerUrl = AssetHelper::imageUrl('banner-accueil.jpg');
         
 
         <!-- $listeAvis vient de HomeController::index()
-         (via AvisModel::getAvisValides()), puis est utilisée dans cette vue -->
+         (via AvisRepository::getAvisValides()), puis est utilisée dans cette vue -->
         <?php if (!empty($listeAvis)): ?>
             <?php foreach ($listeAvis as $avis): ?>
                 <article class="avis-card">

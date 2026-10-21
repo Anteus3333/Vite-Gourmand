@@ -1,5 +1,5 @@
 <?php
-// src/Models/TentativeConnexionModel.php
+// src/Repositories/TentativeConnexionRepository.php
 
 require_once __DIR__ . '/../Services/SqlDatabase.php';
 
@@ -8,7 +8,7 @@ require_once __DIR__ . '/../Services/SqlDatabase.php';
  * Protège le login contre la force brute : au-delà de MAX_TENTATIVES échecs
  * en FENETRE_MINUTES minutes (pour un même email ou une même IP), on bloque.
  */
-class TentativeConnexionModel {
+class TentativeConnexionRepository {
     public const MAX_TENTATIVES  = 5;
     public const FENETRE_MINUTES = 15;
 
@@ -25,9 +25,9 @@ class TentativeConnexionModel {
         // Prépare la requête SQL pour compter les échecs récents
         // DATE_SUB(NOW(), INTERVAL " . self::FENETRE_MINUTES . " MINUTE) : 
         // soustrait FENETRE_MINUTES minutes à la date et heure actuelles (NOW())
-        // self::FENETRE_MINUTES : constante de la classe TentativeConnexionModel
-        // Constante défini au début de la classe TentativeConnexionModel
-        // self signifie que la constante est définie dans la classe TentativeConnexionModel
+        // self::FENETRE_MINUTES : constante de la classe TentativeConnexionRepository
+        // Constante défini au début de la classe TentativeConnexionRepository
+        // self signifie que la constante est définie dans la classe TentativeConnexionRepository
 
         $query = "
             SELECT COUNT(*) AS nb

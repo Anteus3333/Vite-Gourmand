@@ -16,10 +16,10 @@ trait GestionCatalogueTrait {
 
     public function menus(): void {
         $this->exigerGestionAcces();
-        $menus = $this->menuModel->getAllMenus();
-        $commandesActivesParMenu = $this->menuModel->compterCommandesActivesParMenu();
-        $platsParMenu = $this->menuModel->compterPlatsParMenu();
-        $minPlatsVisible = MenuModel::MIN_PLATS_VISIBLE;
+        $menus = $this->menuRepository->getAllMenus();
+        $commandesActivesParMenu = $this->menuRepository->compterCommandesActivesParMenu();
+        $platsParMenu = $this->menuRepository->compterPlatsParMenu();
+        $minPlatsVisible = MenuRepository::MIN_PLATS_VISIBLE;
         $titrePage = 'Gestion des menus - ' . $this->gestionTitreEspace();
         $gestionBase    = $this->gestionBaseUrl();
         $gestionNavFile = $this->gestionNavFile();
@@ -28,8 +28,8 @@ trait GestionCatalogueTrait {
 
     public function menuCreer(): void {
         $this->exigerGestionAcces();
-        $themes  = $this->menuModel->getAllThemes();
-        $regimes = $this->menuModel->getAllRegimes();
+        $themes  = $this->menuRepository->getAllThemes();
+        $regimes = $this->menuRepository->getAllRegimes();
         $erreurs = [];
         $old = $this->champsMenuVides();
         $menuVerrouille = false;
@@ -53,8 +53,8 @@ trait GestionCatalogueTrait {
             }
 
             if (empty($erreurs)) {
-                $id = $this->menuModel->creer($old);
-                $this->menuModel->definirCouverture(
+                $id = $this->menuRepository->creer($old);
+                $this->menuRepository->definirCouverture(
                     $id,
                     $upload['relatif'],
                     $old['titre'] !== '' ? $old['titre'] : null
@@ -78,17 +78,17 @@ trait GestionCatalogueTrait {
 
     public function menuModifier(int $id): void {
         $this->exigerGestionAcces();
-        $menu = $this->menuModel->getMenuById($id);
+        $menu = $this->menuRepository->getMenuById($id);
         if (!$menu) {
             http_response_code(404);
             echo 'Menu introuvable';
             return;
         }
 
-        $themes  = $this->menuModel->getAllThemes();
-        $regimes = $this->menuModel->getAllRegimes();
+        $themes  = $this->menuRepository->getAllThemes();
+        $regimes = $this->menuRepository->getAllRegimes();
         $erreurs = [];
-        $nbCommandesActives = $this->menuModel->compterCommandesActives($id);
+        $nbCommandesActives = $this->menuRepository->compterCommandesActives($id);
         $menuVerrouille = $nbCommandesActives > 0;
         $imageCouverture = $menu['image_couverture'] ?? null;
         $old = [
@@ -121,9 +121,9 @@ trait GestionCatalogueTrait {
                 }
 
                 if (empty($erreurs)) {
-                    $this->menuModel->modifier($id, $old);
+                    $this->menuRepository->modifier($id, $old);
                     if (!empty($upload['relatif'])) {
-                        $ancien = $this->menuModel->definirCouverture(
+                        $ancien = $this->menuRepository->definirCouverture(
                             $id,
                             $upload['relatif'],
                             $old['titre'] !== '' ? $old['titre'] : null
@@ -156,13 +156,13 @@ trait GestionCatalogueTrait {
             exit;
         }
 
-        if ($this->menuModel->aDesCommandesActives($id)) {
-            $nb = $this->menuModel->compterCommandesActives($id);
+        if ($this->menuRepository->aDesCommandesActives($id)) {
+            $nb = $this->menuRepository->compterCommandesActives($id);
             $_SESSION['flash_erreur'] = $this->messageMenuVerrouille($nb)
                 . ' Suppression impossible.';
         } else {
-            $fichiers = $this->menuModel->getFichiersImages($id);
-            if ($this->menuModel->supprimer($id)) {
+            $fichiers = $this->menuRepository->getFichiersImages($id);
+            if ($this->menuRepository->supprimer($id)) {
                 $uploader = new ImageUploadService();
                 foreach ($fichiers as $fichier) {
                     $uploader->supprimerSiUpload($fichier);
@@ -187,22 +187,22 @@ trait GestionCatalogueTrait {
             exit;
         }
 
-        if (!$this->menuModel->getMenuById($id)) {
+        if (!$this->menuRepository->getMenuById($id)) {
             $_SESSION['flash_erreur'] = 'Menu introuvable.';
             header('Location: ' . $this->gestionBaseUrl() . '/menus');
             exit;
         }
 
         $visible = isset($_POST['visible']);
-        if ($visible && !$this->menuModel->peutEtreVisible($id)) {
-            $nb = $this->menuModel->compterPlats($id);
-            $min = MenuModel::MIN_PLATS_VISIBLE;
+        if ($visible && !$this->menuRepository->peutEtreVisible($id)) {
+            $nb = $this->menuRepository->compterPlats($id);
+            $min = MenuRepository::MIN_PLATS_VISIBLE;
             $_SESSION['flash_erreur'] = "Impossible de rendre ce menu visible : $nb plat(s) associé(s), minimum $min requis.";
             header('Location: ' . $this->gestionBaseUrl() . '/menus');
             exit;
         }
 
-        $this->menuModel->setVisible($id, $visible);
+        $this->menuRepository->setVisible($id, $visible);
         $_SESSION['flash_succes'] = $visible
             ? 'Menu visible sur le site.'
             : 'Menu masqué du site (plus proposable à la commande).';
@@ -213,14 +213,14 @@ trait GestionCatalogueTrait {
 
     public function menuPlats(int $id): void {
         $this->exigerGestionAcces();
-        $menu = $this->menuModel->getMenuById($id);
+        $menu = $this->menuRepository->getMenuById($id);
         if (!$menu) {
             http_response_code(404);
             echo 'Menu introuvable';
             return;
         }
 
-        $nbCommandesActives = $this->menuModel->compterCommandesActives($id);
+        $nbCommandesActives = $this->menuRepository->compterCommandesActives($id);
         $menuVerrouille = $nbCommandesActives > 0;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && Csrf::verifier()) {
@@ -243,8 +243,8 @@ trait GestionCatalogueTrait {
                     if (!$upload['ok']) {
                         $_SESSION['flash_erreur'] = $upload['erreur'] ?? 'Erreur d’upload de la photo.';
                     } else {
-                        $platId = $this->menuModel->creerPlat($titrePlat, $upload['relatif']);
-                        $this->menuModel->ajouterPlatAuMenu($id, $platId);
+                        $platId = $this->menuRepository->creerPlat($titrePlat, $upload['relatif']);
+                        $this->menuRepository->ajouterPlatAuMenu($id, $platId);
                         $_SESSION['flash_succes'] = 'Plat ajouté au menu.';
                     }
                 }
@@ -255,26 +255,26 @@ trait GestionCatalogueTrait {
                 if (!$upload['ok']) {
                     $_SESSION['flash_erreur'] = $upload['erreur'] ?? 'Erreur d’upload de la photo.';
                 } elseif (!empty($upload['relatif'])) {
-                    $ancien = $this->menuModel->definirImagePlat($platId, $upload['relatif']);
+                    $ancien = $this->menuRepository->definirImagePlat($platId, $upload['relatif']);
                     $uploader->supprimerSiUpload($ancien);
                     $_SESSION['flash_succes'] = 'Photo du plat enregistrée.';
                 }
             } elseif ($action === 'lier' && !empty($_POST['plat_id'])) {
-                $this->menuModel->ajouterPlatAuMenu($id, (int) $_POST['plat_id']);
+                $this->menuRepository->ajouterPlatAuMenu($id, (int) $_POST['plat_id']);
                 $_SESSION['flash_succes'] = 'Plat associé au menu.';
             } elseif ($action === 'retirer' && !empty($_POST['plat_id'])) {
-                $this->menuModel->retirerPlatDuMenu($id, (int) $_POST['plat_id']);
-                if ($this->menuModel->estVisible($id) && !$this->menuModel->peutEtreVisible($id)) {
-                    $this->menuModel->setVisible($id, false);
+                $this->menuRepository->retirerPlatDuMenu($id, (int) $_POST['plat_id']);
+                if ($this->menuRepository->estVisible($id) && !$this->menuRepository->peutEtreVisible($id)) {
+                    $this->menuRepository->setVisible($id, false);
                     $_SESSION['flash_succes'] = 'Plat retiré. Menu masqué automatiquement (moins de '
-                        . MenuModel::MIN_PLATS_VISIBLE . ' plats).';
+                        . MenuRepository::MIN_PLATS_VISIBLE . ' plats).';
                 } else {
                     $_SESSION['flash_succes'] = 'Plat retiré du menu.';
                 }
             } elseif ($action === 'allergenes' && !empty($_POST['plat_id'])) {
                 $platId = (int) $_POST['plat_id'];
                 $ids    = array_map('intval', $_POST['allergenes'] ?? []);
-                $this->menuModel->definirAllergenesPlat($platId, $ids);
+                $this->menuRepository->definirAllergenesPlat($platId, $ids);
                 $_SESSION['flash_succes'] = 'Allergènes enregistrés.';
             }
 
@@ -282,12 +282,12 @@ trait GestionCatalogueTrait {
             exit;
         }
 
-        $platsMenu     = $this->menuModel->getPlatsByMenuId($id);
-        $platsDisponibles = $this->menuModel->getAllPlats();
-        $allergenes    = $this->menuModel->getAllAllergenes();
+        $platsMenu     = $this->menuRepository->getPlatsByMenuId($id);
+        $platsDisponibles = $this->menuRepository->getAllPlats();
+        $allergenes    = $this->menuRepository->getAllAllergenes();
         $allergenesParPlat = [];
         foreach ($platsMenu as $p) {
-            $allergenesParPlat[$p['plat_id']] = $this->menuModel->getAllergenesByPlatId((int) $p['plat_id']);
+            $allergenesParPlat[$p['plat_id']] = $this->menuRepository->getAllergenesByPlatId((int) $p['plat_id']);
         }
 
         $titrePage = 'Plats du menu - ' . $this->gestionTitreEspace();
@@ -298,7 +298,7 @@ trait GestionCatalogueTrait {
 
     public function horaires(): void {
         $this->exigerGestionAcces();
-        $horaires = $this->horaireModel->getAll();
+        $horaires = $this->horaireRepository->getAll();
         $erreurs  = [];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -313,7 +313,7 @@ trait GestionCatalogueTrait {
                         'heure_fermeture'  => trim($_POST['heure_fermeture'][$i] ?? ''),
                     ];
                 }
-                $this->horaireModel->enregistrer($lignes);
+                $this->horaireRepository->enregistrer($lignes);
                 $_SESSION['flash_succes'] = 'Horaires mis à jour (pied de page et page Contact).';
                 header('Location: ' . $this->gestionBaseUrl() . '/horaires');
                 exit;

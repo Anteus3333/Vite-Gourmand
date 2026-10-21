@@ -1,10 +1,10 @@
 <?php
-// src/Models/AvisModel.php
+// src/Repositories/AvisRepository.php
 
 // On inclut le fichier de connexion à la BDD
 require_once __DIR__ . '/../Services/SqlDatabase.php';
 
-class AvisModel {
+class AvisRepository {
     private $conn;
 
     public function __construct() {
