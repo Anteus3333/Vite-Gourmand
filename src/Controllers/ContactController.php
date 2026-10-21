@@ -4,8 +4,8 @@
 require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 require_once __DIR__ . '/../Services/TurnstileService.php';
-require_once __DIR__ . '/../Repositories/TentativeConnexionRepository.php';
-require_once __DIR__ . '/../Repositories/HoraireRepository.php';
+require_once __DIR__ . '/../Models/TentativeConnexionModel.php';
+require_once __DIR__ . '/../Models/HoraireModel.php';
 
 class ContactController {
     /** Marqueur dans tentative_connexion pour le rate limit du formulaire contact */
@@ -29,7 +29,7 @@ class ContactController {
             }
 
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-            $tentatives = new TentativeConnexionRepository();
+            $tentatives = new TentativeConnexionModel();
 
             // Honeypot : champ caché rempli uniquement par les bots
             $honeypot = trim((string) ($_POST['website'] ?? ''));
@@ -129,7 +129,7 @@ class ContactController {
         string $titrePage,
         array $old,
         TurnstileService $turnstile,
-        TentativeConnexionRepository $tentatives,
+        TentativeConnexionModel $tentatives,
         string $ip
     ): void {
         $tentatives->enregistrer(self::RATE_EMAIL, $ip);
@@ -216,7 +216,7 @@ class ContactController {
         $emailContact = (new GmailMailer())->getContactEmail();
         $turnstileActif = $turnstile->estActif();
         $turnstileSiteKey = $turnstile->siteKey();
-        $resumeHoraires = (new HoraireRepository())->getResumeFooter();
+        $resumeHoraires = (new HoraireModel())->getResumeFooter();
 
         require_once __DIR__ . '/../Views/contact.php';
     }

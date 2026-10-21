@@ -40,7 +40,7 @@ class AvisRepository {
 
         // A noter qu'on fait ici une requête préparée mais pas de variable
         // entrée par l'utilisateur, donc pas de risque d'injection SQL
-        // Donc ici c'est plus pour homogénéiser le code sur les Models.php
+        // Donc ici c'est plus pour homogénéiser le code sur les Repositories
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
 

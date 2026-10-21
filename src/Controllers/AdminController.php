@@ -1,12 +1,12 @@
 <?php
 // src/Controllers/AdminController.php — espace administrateur (ECF)
 
-require_once __DIR__ . '/../Repositories/MenuRepository.php';
-require_once __DIR__ . '/../Repositories/HoraireRepository.php';
-require_once __DIR__ . '/../Repositories/CommandeRepository.php';
-require_once __DIR__ . '/../Repositories/AvisRepository.php';
-require_once __DIR__ . '/../Repositories/UtilisateurRepository.php';
-require_once __DIR__ . '/../Repositories/CommandeStatsRepository.php';
+require_once __DIR__ . '/../Models/MenuModel.php';
+require_once __DIR__ . '/../Models/HoraireModel.php';
+require_once __DIR__ . '/../Models/CommandeModel.php';
+require_once __DIR__ . '/../Models/AvisModel.php';
+require_once __DIR__ . '/../Models/UtilisateurModel.php';
+require_once __DIR__ . '/../Models/CommandeStatsModel.php';
 require_once __DIR__ . '/../Services/AuthGuard.php';
 require_once __DIR__ . '/Traits/GestionCatalogueTrait.php';
 require_once __DIR__ . '/Traits/GestionCommandesAvisTrait.php';
@@ -15,20 +15,20 @@ class AdminController {
     use GestionCatalogueTrait;
     use GestionCommandesAvisTrait;
 
-    private MenuRepository $menuRepository;
-    private HoraireRepository $horaireRepository;
-    private CommandeRepository $commandeRepository;
-    private AvisRepository $avisRepository;
-    private UtilisateurRepository $utilisateurRepository;
-    private CommandeStatsRepository $commandeStatsRepository;
+    private MenuModel $menuModel;
+    private HoraireModel $horaireModel;
+    private CommandeModel $commandeModel;
+    private AvisModel $avisModel;
+    private UtilisateurModel $utilisateurModel;
+    private CommandeStatsModel $commandeStatsModel;
 
     public function __construct() {
-        $this->menuRepository         = new MenuRepository();
-        $this->horaireRepository      = new HoraireRepository();
-        $this->commandeRepository     = new CommandeRepository();
-        $this->avisRepository         = new AvisRepository();
-        $this->utilisateurRepository  = new UtilisateurRepository();
-        $this->commandeStatsRepository        = new CommandeStatsRepository();
+        $this->menuModel         = new MenuModel();
+        $this->horaireModel      = new HoraireModel();
+        $this->commandeModel     = new CommandeModel();
+        $this->avisModel         = new AvisModel();
+        $this->utilisateurModel  = new UtilisateurModel();
+        $this->commandeStatsModel        = new CommandeStatsModel();
     }
 
     /** Tableau de bord administrateur */
@@ -37,7 +37,7 @@ class AdminController {
 
         $filtres = $this->extraireFiltresStats();
         $statsSourceChoisie = $this->resoudreSourceStats();
-        $mongoDispo = $this->commandeStatsRepository->estDisponible();
+        $mongoDispo = $this->commandeStatsModel->estDisponible();
         $statsSource = 'mysql';
         $statsErreur = null;
 
@@ -46,12 +46,12 @@ class AdminController {
         // Si l'utilisateur a choisi MongoDB et qu'il est disponible
         if ($utiliserMongo) {
             try {
-                $statsMenus = $this->commandeStatsRepository->getStatsParMenu(
+                $statsMenus = $this->commandeStatsModel->getStatsParMenu(
                     $filtres['date_debut'],
                     $filtres['date_fin'],
                     $filtres['menu_id']
                 );
-                $totauxFiltres = $this->commandeStatsRepository->getTotauxStats(
+                $totauxFiltres = $this->commandeStatsModel->getTotauxStats(
                     $filtres['date_debut'],
                     $filtres['date_fin'],
                     $filtres['menu_id']
@@ -61,12 +61,12 @@ class AdminController {
             // Si erreur type coupure Atlas ou pb sur les méthodes MongoDB
             catch (Throwable $e) {
                 $statsErreur = $e->getMessage();
-                $statsMenus = $this->commandeRepository->getStatsParMenu(
+                $statsMenus = $this->commandeModel->getStatsParMenu(
                     $filtres['date_debut'],
                     $filtres['date_fin'],
                     $filtres['menu_id']
                 );
-                $totauxFiltres = $this->commandeRepository->getTotauxStats(
+                $totauxFiltres = $this->commandeModel->getTotauxStats(
                     $filtres['date_debut'],
                     $filtres['date_fin'],
                     $filtres['menu_id']
@@ -79,7 +79,7 @@ class AdminController {
         else {
             // récupère les erreurs de MongoDB
             if ($statsSourceChoisie === 'mongodb' && !$mongoDispo) {
-                $detail = $this->commandeStatsRepository->derniereErreur();
+                $detail = $this->commandeStatsModel->derniereErreur();
                 $statsErreur = $detail
                     ?: 'MongoDB Atlas non joignable ou non configuré (config/mongodb.local.php).';
                 // Indice fréquent Atlas : TLS « internal error » = IP non whitelistée
@@ -90,23 +90,23 @@ class AdminController {
                     $statsErreur .= ' — Le serveur web n’atteint pas Atlas (pare-feu Infomaniak : ouvrir le port sortant 27017, ou Network Access Atlas).';
                 }
             }
-            $statsMenus = $this->commandeRepository->getStatsParMenu(
+            $statsMenus = $this->commandeModel->getStatsParMenu(
                 $filtres['date_debut'],
                 $filtres['date_fin'],
                 $filtres['menu_id']
             );
-            $totauxFiltres = $this->commandeRepository->getTotauxStats(
+            $totauxFiltres = $this->commandeModel->getTotauxStats(
                 $filtres['date_debut'],
                 $filtres['date_fin'],
                 $filtres['menu_id']
             );
         }
 
-        $nbMenus      = $this->menuRepository->compterMenus();
-        $stockFaible  = $this->menuRepository->getMenusStockFaible();
+        $nbMenus      = $this->menuModel->compterMenus();
+        $stockFaible  = $this->menuModel->getMenusStockFaible();
 
         // C'est un array qui est retourné par cette méthode
-        $compteurs    = $this->commandeRepository->compterParStatut();
+        $compteurs    = $this->commandeModel->compterParStatut();
         // D'où array_sum() pour faire la somme de tous les éléments de l'array
         // array_sum() possible car retourne un entier et 
         // le tableau est rempli de 0 ou de 1
@@ -114,9 +114,9 @@ class AdminController {
 
         // ici count car on fait la somme du nombre de lignes d'un tableau
         // qui contient des strings
-        $nbEmployes   = count($this->utilisateurRepository->getEmployes());
+        $nbEmployes   = count($this->utilisateurModel->getEmployes());
 
-        $menusListe   = $this->menuRepository->getAllMenus();
+        $menusListe   = $this->menuModel->getAllMenus();
 
         $titrePage = 'Administration - Vite et Gourmand';
         require __DIR__ . '/../Views/admin/index.php';
@@ -134,14 +134,14 @@ class AdminController {
             exit;
         }
 
-        if (!$this->commandeStatsRepository->estDisponible()) {
+        if (!$this->commandeStatsModel->estDisponible()) {
             $_SESSION['flash_erreur'] = 'MongoDB indisponible : impossible de synchroniser.';
             header('Location: ' . BASE_URL . '/admin?stats=mongodb');
             exit;
         }
 
         try {
-            $nb = $this->commandeStatsRepository->synchroniserDepuisMysql();
+            $nb = $this->commandeStatsModel->synchroniserDepuisMysql();
             $_SESSION['flash_succes'] = "Stats synchronisées vers MongoDB Atlas ($nb document(s)).";
         } 
         catch (Throwable $e) {
@@ -214,7 +214,7 @@ class AdminController {
     /** Liste des comptes employé */
     public function employes(): void {
         $this->exigerAdmin();
-        $employes = $this->utilisateurRepository->getEmployes();
+        $employes = $this->utilisateurModel->getEmployes();
         $titrePage = 'Comptes employé - Administration';
         require __DIR__ . '/../Views/admin/employes.php';
     }
@@ -246,13 +246,13 @@ class AdminController {
                 empty($erreurs)
                 && empty($erreursPassword)
                 && $erreurConfirmation === null
-                && $this->utilisateurRepository->findByEmail($old['email'])
+                && $this->utilisateurModel->findByEmail($old['email'])
             ) {
                 $erreurs[] = 'Un compte existe déjà avec cette adresse mail.';
             }
 
             if (empty($erreurs) && empty($erreursPassword) && $erreurConfirmation === null) {
-                $this->utilisateurRepository->createEmploye($old + ['password' => $password]);
+                $this->utilisateurModel->createEmploye($old + ['password' => $password]);
                 $this->envoyerMailCompteEmploye($old);
 
                 $_SESSION['flash_succes'] = 'Compte employé créé. Un e-mail de notification a été envoyé.';
@@ -269,13 +269,13 @@ class AdminController {
     public function employeModifier(int $id): void {
         $this->exigerAdmin();
 
-        if (!$this->utilisateurRepository->estEmploye($id)) {
+        if (!$this->utilisateurModel->estEmploye($id)) {
             http_response_code(404);
             echo 'Compte employé introuvable';
             return;
         }
 
-        $employe = $this->utilisateurRepository->findById($id);
+        $employe = $this->utilisateurModel->findById($id);
         $erreurs = [];
         $erreursPassword = [];
         $erreurConfirmation = null;
@@ -309,7 +309,7 @@ class AdminController {
             }
 
             if (empty($erreurs) && empty($erreursPassword) && $erreurConfirmation === null) {
-                $existant = $this->utilisateurRepository->findByEmail($old['email']);
+                $existant = $this->utilisateurModel->findByEmail($old['email']);
                 if ($existant && (int) $existant['utilisateur_id'] !== $id) {
                     $erreurs[] = 'Un compte existe déjà avec cette adresse mail.';
                 }
@@ -320,7 +320,7 @@ class AdminController {
                 if ($password !== '') {
                     $payload['password'] = $password;
                 }
-                $this->utilisateurRepository->updateEmploye($id, $payload);
+                $this->utilisateurModel->updateEmploye($id, $payload);
                 $_SESSION['flash_succes'] = 'Compte employé mis à jour.';
                 header('Location: ' . BASE_URL . '/admin/employes');
                 exit;
@@ -341,13 +341,13 @@ class AdminController {
             exit;
         }
 
-        if (!$this->utilisateurRepository->estEmploye($id)) {
+        if (!$this->utilisateurModel->estEmploye($id)) {
             $_SESSION['flash_erreur'] = 'Compte employé introuvable.';
             header('Location: ' . BASE_URL . '/admin/employes');
             exit;
         }
 
-        if ($this->utilisateurRepository->supprimerEmploye($id)) {
+        if ($this->utilisateurModel->supprimerEmploye($id)) {
             $_SESSION['flash_succes'] = 'Compte employé supprimé.';
         } else {
             $_SESSION['flash_erreur'] = 'Impossible de supprimer ce compte (données liées ou compte introuvable).';
@@ -445,13 +445,13 @@ class AdminController {
             exit;
         }
 
-        if (!$this->utilisateurRepository->estEmploye($id)) {
+        if (!$this->utilisateurModel->estEmploye($id)) {
             $_SESSION['flash_erreur'] = 'Compte employé introuvable.';
             header('Location: ' . BASE_URL . '/admin/employes');
             exit;
         }
 
-        if ($this->utilisateurRepository->setActifEmploye($id, $actif)) {
+        if ($this->utilisateurModel->setActifEmploye($id, $actif)) {
             $_SESSION['flash_succes'] = $actif
                 ? 'Compte employé réactivé.'
                 : 'Compte employé désactivé.';

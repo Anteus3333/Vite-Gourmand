@@ -164,18 +164,19 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 
 ---
 
-## Accès aux données (pattern Repository)
+## Accès aux données (Model → Repository)
 
-Les **Controllers** ne parlent pas directement à la base : ils délèguent à des **Repositories**.
+Flux : **Controller → Model (métier) → Repository (SQL / Mongo)**.
 
 | Couche | Fichiers | Rôle |
 |--------|----------|------|
+| Models | `src/Models/*Model.php` | Règles métier, API utilisée par les Controllers |
+| Repositories SQL | `src/Repositories/*Repository.php` | Requêtes MySQL uniquement (PDO) |
+| Repository NoSQL | `src/Repositories/CommandeStatsRepository.php` | Stats commandes (MongoDB Atlas) |
 | Connexion SQL | `src/Services/SqlDatabase.php` | PDO MySQL centralisé |
 | Connexion NoSQL | `src/Services/MongoDatabase.php` | Client MongoDB Atlas |
-| Repositories SQL | `src/Repositories/*Repository.php` | Requêtes MySQL par entité (utilisateur, commande, menu…) |
-| Repository NoSQL | `src/Repositories/CommandeStatsRepository.php` | Documents stats commandes (agrégations Mongo) |
 
-Exemple côté controller : `$this->utilisateurRepository->findByEmail($email)`.
+Exemple : `$this->utilisateurModel->findByEmail($email)` → `UtilisateurRepository` exécute le SQL.
 
 ---
 
@@ -186,7 +187,8 @@ Exemple côté controller : `$this->utilisateurRepository->findByEmail($email)`.
 | `config/database.php` + `database.local.php` | Paramètres MySQL (ou variables `DB_*` sous Docker) |
 | `Dockerfile` + `docker-compose.yml` | Stack locale Apache/PHP/MySQL |
 | `src/Services/SqlDatabase.php` | Connexion PDO MySQL |
-| `src/Repositories/` | Accès données SQL + NoSQL (pattern Repository) |
+| `src/Models/` | Couche métier (Controllers → Models) |
+| `src/Repositories/` | Accès données SQL + NoSQL (Models → Repositories) |
 | `config/gmail.php` + `gmail.local.php` | SMTP Gmail / simulation |
 | `src/Services/GmailMailer.php` | Envoi des e-mails |
 | `config/commandeconfig.php` | Tarifs livraison, délais, workflow statuts |
@@ -230,7 +232,8 @@ Vite-Gourmand/
 │   ├── css/  js/  images/
 ├── src/
 │   ├── Controllers/        # Auth, Menu, Commande, Compte, Employé, Admin…
-│   ├── Repositories/       # Accès données SQL (PDO) + NoSQL (Mongo stats)
+│   ├── Models/             # Métier (API des Controllers)
+│   ├── Repositories/       # SQL (PDO) + NoSQL (Mongo stats)
 │   ├── Views/              # Templates PHP
 │   ├── Services/           # SqlDatabase, MongoDatabase, CSRF, AuthGuard, mails…
 │   └── Router.php

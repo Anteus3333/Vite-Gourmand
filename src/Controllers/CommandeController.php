@@ -1,27 +1,27 @@
 <?php
 // src/Controllers/CommandeController.php
 
-require_once __DIR__ . '/../Repositories/CommandeRepository.php';
-require_once __DIR__ . '/../Repositories/MenuRepository.php';
-require_once __DIR__ . '/../Repositories/UtilisateurRepository.php';
+require_once __DIR__ . '/../Models/CommandeModel.php';
+require_once __DIR__ . '/../Models/MenuModel.php';
+require_once __DIR__ . '/../Models/UtilisateurModel.php';
 require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
-require_once __DIR__ . '/../Repositories/CommandeStatsRepository.php';
+require_once __DIR__ . '/../Models/CommandeStatsModel.php';
 
 class CommandeController {
-    private CommandeRepository $commandeRepository;
-    private MenuRepository $menuRepository;
-    private UtilisateurRepository $utilisateurRepository;
+    private CommandeModel $commandeModel;
+    private MenuModel $menuModel;
+    private UtilisateurModel $utilisateurModel;
     private PrixCommandeService $prixService;
     private DistanceService $distanceService;
     private array $config;
 
     public function __construct() {
-        $this->commandeRepository   = new CommandeRepository();
-        $this->menuRepository       = new MenuRepository();
-        $this->utilisateurRepository       = new UtilisateurRepository();
+        $this->commandeModel   = new CommandeModel();
+        $this->menuModel       = new MenuModel();
+        $this->utilisateurModel       = new UtilisateurModel();
         $this->prixService     = new PrixCommandeService();
         $this->distanceService = new DistanceService();
         $this->config          = require __DIR__ . '/../../config/commandeconfig.php';
@@ -39,8 +39,8 @@ class CommandeController {
             exit;
         }
 
-        $utilisateur = $this->utilisateurRepository->findById((int) $_SESSION['utilisateur']['id']);
-        $menus       = $this->menuRepository->getAllMenus(true);
+        $utilisateur = $this->utilisateurModel->findById((int) $_SESSION['utilisateur']['id']);
+        $menus       = $this->menuModel->getAllMenus(true);
         $titrePage   = 'Commander - Vite et Gourmand';
         $erreurs     = [];
         $erreurConditions = false;
@@ -53,7 +53,7 @@ class CommandeController {
         }
 
         $menuIdPrefill = (int) ($_GET['menu_id'] ?? $_POST['menu_id'] ?? 0);
-        $menuSelectionne = $menuIdPrefill ? $this->menuRepository->getMenuById($menuIdPrefill) : null;
+        $menuSelectionne = $menuIdPrefill ? $this->menuModel->getMenuById($menuIdPrefill) : null;
         if ($menuSelectionne && (int) ($menuSelectionne['visible'] ?? 0) !== 1) {
             $menuSelectionne = null;
             $menuIdPrefill = 0;
@@ -92,7 +92,7 @@ class CommandeController {
                 $erreurs[] = 'Votre session a expiré, merci de soumettre à nouveau le formulaire.';
             }
 
-            $menu = $this->menuRepository->getMenuById((int) $old['menu_id']);
+            $menu = $this->menuModel->getMenuById((int) $old['menu_id']);
             if (!$menu || (int) ($menu['visible'] ?? 0) !== 1) {
                 $erreurs[] = 'Veuillez sélectionner un menu valide.';
             } elseif ((int) $menu['quantite_restante'] <= 0) {
@@ -138,7 +138,7 @@ class CommandeController {
             if (empty($erreurs) && !$erreurConditions && $menu) {
                 $tarif = $this->prixService->calculer($menu, $nbPersonnes, $old['ville_livraison'], $distanceKm);
 
-                $numero = $this->commandeRepository->creer([
+                $numero = $this->commandeModel->creer([
                     'date_prestation'   => $old['date_prestation'],
                     'heure_livraison'   => $old['heure_livraison'],
                     'adresse_livraison' => $old['adresse_livraison'],
@@ -151,9 +151,9 @@ class CommandeController {
                     'utilisateur_id'    => (int) $_SESSION['utilisateur']['id'],
                 ], (int) $menu['menu_id']);
 
-                $docStats = $this->commandeRepository->getPourStatsMongo($numero);
+                $docStats = $this->commandeModel->getPourStatsMongo($numero);
                 if ($docStats) {
-                    (new CommandeStatsRepository())->enregistrerCommande($docStats);
+                    (new CommandeStatsModel())->enregistrerCommande($docStats);
                 }
 
                 $this->envoyerMailConfirmation($old, $menu, $numero, $tarif);
@@ -193,7 +193,7 @@ class CommandeController {
     public function calculPrixAPI() {
         header('Content-Type: application/json');
 
-        $menu = $this->menuRepository->getMenuById((int) ($_GET['menu_id'] ?? 0));
+        $menu = $this->menuModel->getMenuById((int) ($_GET['menu_id'] ?? 0));
         if (!$menu || (int) ($menu['visible'] ?? 0) !== 1) {
             echo json_encode(['success' => false, 'message' => 'Menu introuvable']);
             exit;

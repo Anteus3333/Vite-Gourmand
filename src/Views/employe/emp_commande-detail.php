@@ -2,7 +2,7 @@
 ob_start();
 $gestionBase = $gestionBase ?? (BASE_URL . '/espace-employe');
 $gestionNavFile = $gestionNavFile ?? __DIR__ . '/emp__nav.php';
-$cm = $commandeRepository;
+$cm = $commandeModel;
 $total = (float) $commande['prix_menu'] + (float) $commande['prix_livraison'];
 $numeroEnc = urlencode($commande['numero_commande']);
 $clientNom = ViewHelper::formatNomComplet($commande['client_prenom'] ?? '', $commande['client_nom'] ?? '');

@@ -3,7 +3,7 @@
 
 // Voir index.php pour la définition de __DIR__
 // ici __DIR__ est le chemin du dossier courant (ici /src/Controllers)
-require_once __DIR__ . '/../Repositories/AvisRepository.php';
+require_once __DIR__ . '/../Models/AvisModel.php';
 
 // Un controller est une classe qui contient les méthodes pour 
 // gérer les requêtes HTTP
@@ -19,11 +19,11 @@ class HomeController {
     public function index() {
         $titrePage = "Accueil - Vite et Gourmand";
         
-        // 1. On instancie le repository (accès données SQL)
-        $avisRepository = new AvisRepository();
+        // 1. On instancie le modèle (métier ; le SQL est dans AvisRepository)
+        $avisModel = new AvisModel();
         
         // 2. On récupère les données (le tableau des avis)
-        $listeAvis = $avisRepository->getAvisValides();
+        $listeAvis = $avisModel->getAvisValides();
         
         // 3. On appelle la vue (qui aura maintenant accès à la variable $listeAvis)
         require_once __DIR__ . '/../Views/home.php';

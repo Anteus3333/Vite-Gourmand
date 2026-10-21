@@ -1,13 +1,13 @@
 <?php
 // src/Controllers/MenuController.php
 
-require_once __DIR__ . '/../Repositories/MenuRepository.php';
+require_once __DIR__ . '/../Models/MenuModel.php';
 
 class MenuController {
-    private MenuRepository $menuRepository;
+    private MenuModel $menuModel;
 
     public function __construct() {
-        $this->menuRepository = new MenuRepository();
+        $this->menuModel = new MenuModel();
     }
 
     /**
@@ -17,12 +17,12 @@ class MenuController {
         $titrePage = "Nos Menus - Vite et Gourmand";
 
         // Récupère tous les menus visibles
-        $menus = $this->menuRepository->getAllMenus(true);
+        $menus = $this->menuModel->getAllMenus(true);
 
         // Récupère les options de filtres
-        $themes = $this->menuRepository->getAllThemes();
-        $regimes = $this->menuRepository->getAllRegimes();
-        $priceRange = $this->menuRepository->getPriceRange();
+        $themes = $this->menuModel->getAllThemes();
+        $regimes = $this->menuModel->getAllRegimes();
+        $priceRange = $this->menuModel->getPriceRange();
 
         $filtres = [
             'theme_id'          => $_GET['theme_id'] ?? '',
@@ -33,7 +33,7 @@ class MenuController {
         ];
 
         if ($this->filtresActifs($filtres)) {
-            $menus = $this->menuRepository->filterMenus($filtres);
+            $menus = $this->menuModel->filterMenus($filtres);
         }
 
         // Rendu de la page des menus
@@ -63,7 +63,7 @@ class MenuController {
             'nombre_personne'   => $_GET['nombre_personne'] ?? '',
         ];
 
-        $menus = $this->menuRepository->filterMenus($filtres);
+        $menus = $this->menuModel->filterMenus($filtres);
 
         // Retourne le HTML des menus filtrés
         // et le nombre de menus filtrés
@@ -82,7 +82,7 @@ class MenuController {
         $titrePage = "Détail Menu - Vite et Gourmand";
 
         // Récupère le menu
-        $menu = $this->menuRepository->getMenuById($menuId);
+        $menu = $this->menuModel->getMenuById($menuId);
 
         if (!$menu || (int) ($menu['visible'] ?? 0) !== 1) {
             http_response_code(404);
@@ -91,8 +91,8 @@ class MenuController {
         }
 
         // Récupère les plats et allergènes
-        $plats = $this->menuRepository->getPlatsDetailByMenuId($menuId);
-        $images = $this->menuRepository->getImagesByMenuId($menuId);
+        $plats = $this->menuModel->getPlatsDetailByMenuId($menuId);
+        $images = $this->menuModel->getImagesByMenuId($menuId);
 
         require_once __DIR__ . '/../Views/menu-detail.php';
     }

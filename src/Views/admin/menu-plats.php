@@ -70,7 +70,7 @@ $disabledAttr = $menuVerrouille ? ' disabled' : '';
 
             <?php
             $nbPlatsMenu = count($platsMenu);
-            $minPlats = MenuRepository::MIN_PLATS_VISIBLE;
+            $minPlats = MenuModel::MIN_PLATS_VISIBLE;
             ?>
             <?php if ($nbPlatsMenu < $minPlats): ?>
                 <div class="alert alert-avertissement admin-plats-min-alert" role="status">
