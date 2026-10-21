@@ -67,7 +67,10 @@ Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, m
 
 ## Installation avec Docker (recommandé)
 
-Un nouveau développeur clone le dépôt et lance la stack complète (Apache/PHP 8.2 + MySQL 8) :
+Un nouveau développeur clone le dépôt et lance la stack complète (Apache/PHP 8.2 + MySQL 8).
+
+> **Avant de démarrer :** arrêter Laragon (conflit possible sur les ports **80** et **3306**).  
+> **Premier build :** `docker compose up -d --build` peut prendre plusieurs minutes (téléchargement des images + compilation PHP / MongoDB).
 
 ```bash
 git clone https://github.com/Anteus3333/Vite-Gourmand.git
@@ -83,7 +86,7 @@ docker compose up -d --build
 Identifiants MySQL (conteneur) : utilisateur `vite` / mot de passe `vite` (root : `root`).  
 La connexion PHP utilise les variables d’environnement `DB_*` définies dans `docker-compose.yml` (pas besoin de `database.local.php`).
 
-**HeidiSQL** (comme avec Laragon) : nouvelle session → hôte `127.0.0.1`, port `3306`, user `vite` / `vite` (ou `root` / `root`).
+**HeidiSQL** (comme avec Laragon) : créer une session dédiée (ex. `Docker.MySQL`) → hôte `127.0.0.1`, port `3306`, user `vite` / mot de passe `vite` (ou `root` / `root`).
 
 Arrêt :
 
