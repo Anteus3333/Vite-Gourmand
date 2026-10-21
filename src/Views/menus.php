@@ -21,7 +21,11 @@ ob_start();
                         <option value="">Tous les thèmes</option>
                         <?php foreach ($themes as $theme): ?>
                             <option value="<?= (int) $theme['theme_id'] ?>"
-                                <?= ($filtres['theme_id'] == $theme['theme_id']) ? 'selected' : '' ?>>
+                                <?= 
+                                // $filtres['theme_id'] est l'identifiant du thème 
+                                // sélectionné dans le formulaire de filtrage
+                                // $filtres vient du controller MenuController
+                                ($filtres['theme_id'] == $theme['theme_id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($theme['libelle']) ?>
                             </option>
                         <?php endforeach; ?>

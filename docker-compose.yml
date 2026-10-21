@@ -1,0 +1,53 @@
+# Stack Docker ECF — Vite et Gourmand
+# Prérequis : arrêter Laragon (ports 80 / 3306) avant de lancer.
+# Démarrage : docker compose up -d --build
+#
+# Pas de service Node : le front est en HTML/CSS/JS vanilla (pas de build Vite/Webpack).
+
+services:
+  web:
+    build: .
+    container_name: vite_gourmand_web
+    ports:
+      # 8080 pour éviter le conflit avec Laragon (port 80) si besoin
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_NAME: vite_gourmand
+      DB_USER: vite
+      DB_PASSWORD: vite
+    volumes:
+      # Code source monté pour le développement
+      - .:/var/www/html
+      # Garder le vendor construit dans l'image (évite un vendor Windows cassé)
+      - vendor_data:/var/www/html/vendor
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: vite_gourmand_db
+    ports:
+      # HeidiSQL : 127.0.0.1:3306 (arrêter le MySQL Laragon avant)
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: vite_gourmand
+      MYSQL_USER: vite
+      MYSQL_PASSWORD: vite
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/donnees_test.sql:/docker-entrypoint-initdb.d/02-donnees.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  vendor_data:

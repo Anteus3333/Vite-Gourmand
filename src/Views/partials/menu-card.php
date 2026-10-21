@@ -9,6 +9,7 @@ $disponible = (int) $menu['quantite_restante'] > 0;
 $imgUrl = AssetHelper::imageUrl($menu['image_couverture'] ?? null);
 $imgAlt = 'Illustration du ' . htmlspecialchars($menu['titre']);
 ?>
+
 <article class="menu-card">
     <button type="button" class="menu-card-image-link" data-navigate="<?= BASE_URL ?>/menu/<?= (int) $menu['menu_id'] ?>"
             aria-label="Voir le détail du <?= htmlspecialchars($menu['titre']) ?>">

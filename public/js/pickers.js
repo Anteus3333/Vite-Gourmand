@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDatePickers();
 });
 
+// Initialisation des pickers de temps
 function initTimePickers() {
     document.querySelectorAll('[data-time-picker]').forEach((wrap) => {
         const hidden = wrap.querySelector('[data-time-value]');
@@ -19,15 +20,25 @@ function initTimePickers() {
 
         let hourVal = '';
         let minuteVal = '';
+
+        // Si la valeur est déjà présente, on la parse pour obtenir 
+        // les heures et minutes
         if (hidden.value && /^\d{2}:\d{2}$/.test(hidden.value)) {
+
+            // slice() permet de récupérer une partie de la chaîne de caractères
+            // 0, 2 => récupère les 2 premiers caractères
+            // 3, 5 => récupère les 2 derniers caractères
             hourVal = hidden.value.slice(0, 2);
             minuteVal = hidden.value.slice(3, 5);
         }
 
+        // Fonction pour synchroniser la valeur cachée avec les valeurs des pickers
         function syncHidden() {
             hidden.value = (hourVal !== '' && minuteVal !== '') ? `${hourVal}:${minuteVal}` : '';
         }
 
+        // Fonction pour fermer tous les pickers de temps
+        // except = null => ne ferme pas le picker actuel
         function closeAll(except = null) {
             wrap.querySelectorAll('.time-picker-unit').forEach((unit) => {
                 if (unit === except) return;
@@ -38,6 +49,10 @@ function initTimePickers() {
             });
         }
 
+        // Fonction pour rendre le panel des pickers de temps
+        // ce qui veut dire afficher les options disponibles pour le picker
+        // Exemple : si on est sur le picker d'heures, on affiche les heures disponibles
+        // si on est sur le picker de minutes, on affiche les minutes disponibles
         function renderPanel(unitKey) {
             const unit = units[unitKey];
             if (!unit) return;

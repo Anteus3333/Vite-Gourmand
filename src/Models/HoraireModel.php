@@ -11,11 +11,12 @@ class HoraireModel {
     }
 
     public function getAll(): array {
-        $stmt = $this->conn->query("
+        $query = "
             SELECT horaire_id, jour, heure_ouverture, heure_fermeture
             FROM horaire
             ORDER BY horaire_id ASC
-        ");
+        ";
+        $stmt = $this->conn->query($query);
         return $stmt->fetchAll() ?: [];
     }
 
@@ -40,6 +41,8 @@ class HoraireModel {
      *
      * @return list<string>
      */
+
+    
     public function getResumeFooter(): array {
         $rows = $this->getAll();
         if (empty($rows)) {

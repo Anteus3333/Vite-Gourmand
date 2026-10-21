@@ -36,9 +36,22 @@ class MenuController {
             $menus = $this->model->filterMenus($filtres);
         }
 
+        // Rendu de la page des menus
+        // Avec les menus filtrés et les filtres actifs
+        // cette vue est l'ossature principale
+        // elle contient le menu de navigation, le filtre et le contenu des menus
+        // et le nombre de menus est affiché en bas de la page
+        // la page est layoutée par le fichier layout.php
+        // le fichier layout.php contient le menu de navigation, le filtre et le contenu des menus
+        // le fichier layout.php est le fichier principal de la page
+        // le fichier layout.php est appelé par la fonction renderMenuCards
+        // menu-cards.php est le fichier qui contient les cartes de menus
+        // menu-cards.php est appelé par la fonction renderMenuCards
         require_once __DIR__ . '/../Views/menus.php';
     }
 
+    // API pour filtrer les menus
+    // Cet API est appelé par le fichier menu.js
     public function filterAPI() {
         header('Content-Type: application/json');
 
@@ -52,6 +65,8 @@ class MenuController {
 
         $menus = $this->model->filterMenus($filtres);
 
+        // Retourne le HTML des menus filtrés
+        // et le nombre de menus filtrés
         echo json_encode([
             'success' => true,
             'html'    => $this->renderMenuCards($menus),
@@ -90,6 +105,10 @@ class MenuController {
             || $filtres['prix_max'] !== '';
     }
 
+    // Rendu des cartes de menus
+    // Cette fonction est appelée par le fichier menu.js
+    // Si il n'y a pas de menus, elle retourne le HTML de la page vide
+    // Sinon, elle retourne le HTML des cartes de menus
     private function renderMenuCards(array $menus): string {
         if (empty($menus)) {
             ob_start();

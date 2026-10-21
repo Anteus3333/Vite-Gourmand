@@ -23,6 +23,7 @@ $menuActif = $menuSelectionne;
                 </div>
             <?php endif; ?>
 
+            <!-- La position des champs, de la boite recap.... est du aux ID CSS -->
             <form method="post" action="<?= BASE_URL ?>/commande"
                   class="commande-form commande-form--with-recap"
                   id="commande-form"
@@ -200,6 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 <?php endif; ?>
 
+<!-- @filemtime est une fonction qui permet de récupérer la date de modification du fichier -->
 <script src="<?= BASE_URL ?>/js/commande.js?v=<?= @filemtime(__DIR__ . '/../../public/js/commande.js') ?: time() ?>"></script>
 
 <?php
