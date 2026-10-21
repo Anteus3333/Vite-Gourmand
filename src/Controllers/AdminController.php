@@ -6,6 +6,7 @@ require_once __DIR__ . '/../Models/HoraireModel.php';
 require_once __DIR__ . '/../Models/CommandeModel.php';
 require_once __DIR__ . '/../Models/AvisModel.php';
 require_once __DIR__ . '/../Models/UtilisateurModel.php';
+require_once __DIR__ . '/../Models/CommandeStatsModel.php';
 require_once __DIR__ . '/../Services/AuthGuard.php';
 require_once __DIR__ . '/Traits/GestionCatalogueTrait.php';
 require_once __DIR__ . '/Traits/GestionCommandesAvisTrait.php';
@@ -19,7 +20,7 @@ class AdminController {
     private CommandeModel $commandeModel;
     private AvisModel $avisModel;
     private UtilisateurModel $utilisateurModel;
-    private StatsMongoService $statsMongo;
+    private CommandeStatsModel $commandeStatsModel;
 
     public function __construct() {
         $this->menuModel         = new MenuModel();
@@ -27,7 +28,7 @@ class AdminController {
         $this->commandeModel     = new CommandeModel();
         $this->avisModel         = new AvisModel();
         $this->utilisateurModel  = new UtilisateurModel();
-        $this->statsMongo        = new StatsMongoService();
+        $this->commandeStatsModel        = new CommandeStatsModel();
     }
 
     /** Tableau de bord administrateur */
@@ -36,7 +37,7 @@ class AdminController {
 
         $filtres = $this->extraireFiltresStats();
         $statsSourceChoisie = $this->resoudreSourceStats();
-        $mongoDispo = $this->statsMongo->estDisponible();
+        $mongoDispo = $this->commandeStatsModel->estDisponible();
         $statsSource = 'mysql';
         $statsErreur = null;
 
@@ -45,12 +46,12 @@ class AdminController {
         // Si l'utilisateur a choisi MongoDB et qu'il est disponible
         if ($utiliserMongo) {
             try {
-                $statsMenus = $this->statsMongo->getStatsParMenu(
+                $statsMenus = $this->commandeStatsModel->getStatsParMenu(
                     $filtres['date_debut'],
                     $filtres['date_fin'],
                     $filtres['menu_id']
                 );
-                $totauxFiltres = $this->statsMongo->getTotauxStats(
+                $totauxFiltres = $this->commandeStatsModel->getTotauxStats(
                     $filtres['date_debut'],
                     $filtres['date_fin'],
                     $filtres['menu_id']
@@ -78,7 +79,7 @@ class AdminController {
         else {
             // récupère les erreurs de MongoDB
             if ($statsSourceChoisie === 'mongodb' && !$mongoDispo) {
-                $detail = $this->statsMongo->derniereErreur();
+                $detail = $this->commandeStatsModel->derniereErreur();
                 $statsErreur = $detail
                     ?: 'MongoDB Atlas non joignable ou non configuré (config/mongodb.local.php).';
                 // Indice fréquent Atlas : TLS « internal error » = IP non whitelistée
@@ -133,14 +134,14 @@ class AdminController {
             exit;
         }
 
-        if (!$this->statsMongo->estDisponible()) {
+        if (!$this->commandeStatsModel->estDisponible()) {
             $_SESSION['flash_erreur'] = 'MongoDB indisponible : impossible de synchroniser.';
             header('Location: ' . BASE_URL . '/admin?stats=mongodb');
             exit;
         }
 
         try {
-            $nb = $this->statsMongo->synchroniserDepuisMysql();
+            $nb = $this->commandeStatsModel->synchroniserDepuisMysql();
             $_SESSION['flash_succes'] = "Stats synchronisées vers MongoDB Atlas ($nb document(s)).";
         } 
         catch (Throwable $e) {

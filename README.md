@@ -17,6 +17,7 @@ Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, m
 - [Prérequis](#prérequis)
 - [Installation avec Docker (recommandé)](#installation-avec-docker-recommandé)
 - [Installation locale Laragon (alternative)](#installation-locale-laragon-alternative)
+- [Accès aux données (pattern Repository)](#accès-aux-données-pattern-repository)
 - [Configuration](#configuration)
 - [Lancement](#lancement)
 - [Comptes de test](#comptes-de-test)
@@ -101,7 +102,7 @@ docker compose down -v
 docker compose up -d --build
 ```
 
-Fichiers Docker versionnés : `Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`.
+Fichiers Docker versionnés : `Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`, `docker/mysql/` (image MySQL UTF-8 — évite les accents cassés type `dÃ©licieux` à l’import).
 
 > **Node.js** : non inclus dans Compose — le front est en HTML/CSS/JS vanilla (pas de build Vite/Webpack).
 
@@ -163,6 +164,22 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 
 ---
 
+## Accès aux données (Model → Repository)
+
+Flux : **Controller → Model (métier) → Repository (SQL / Mongo)**.
+
+| Couche | Fichiers | Rôle |
+|--------|----------|------|
+| Models | `src/Models/*Model.php` | Règles métier, API utilisée par les Controllers |
+| Repositories SQL | `src/Repositories/*Repository.php` | Requêtes MySQL uniquement (PDO) |
+| Repository NoSQL | `src/Repositories/CommandeStatsRepository.php` | Stats commandes (MongoDB Atlas) |
+| Connexion SQL | `src/Services/SqlDatabase.php` | PDO MySQL centralisé |
+| Connexion NoSQL | `src/Services/MongoDatabase.php` | Client MongoDB Atlas |
+
+Exemple : `$this->utilisateurModel->findByEmail($email)` → `UtilisateurRepository` exécute le SQL.
+
+---
+
 ## Configuration
 
 | Fichier | Rôle |
@@ -170,6 +187,8 @@ Sans Mongo, le tableau de bord admin utilise MySQL.
 | `config/database.php` + `database.local.php` | Paramètres MySQL (ou variables `DB_*` sous Docker) |
 | `Dockerfile` + `docker-compose.yml` | Stack locale Apache/PHP/MySQL |
 | `src/Services/SqlDatabase.php` | Connexion PDO MySQL |
+| `src/Models/` | Couche métier (Controllers → Models) |
+| `src/Repositories/` | Accès données SQL + NoSQL (Models → Repositories) |
 | `config/gmail.php` + `gmail.local.php` | SMTP Gmail / simulation |
 | `src/Services/GmailMailer.php` | Envoi des e-mails |
 | `config/commandeconfig.php` | Tarifs livraison, délais, workflow statuts |
@@ -213,9 +232,10 @@ Vite-Gourmand/
 │   ├── css/  js/  images/
 ├── src/
 │   ├── Controllers/        # Auth, Menu, Commande, Compte, Employé, Admin…
-│   ├── Models/             # Accès BDD (PDO)
+│   ├── Models/             # Métier (API des Controllers)
+│   ├── Repositories/       # SQL (PDO) + NoSQL (Mongo stats)
 │   ├── Views/              # Templates PHP
-│   ├── Services/           # GmailMailer, CSRF, AuthGuard, upload images, Mongo…
+│   ├── Services/           # SqlDatabase, MongoDatabase, CSRF, AuthGuard, mails…
 │   └── Router.php
 ├── config/
 ├── sql/                    # schema + fixtures (import auto sous Docker)

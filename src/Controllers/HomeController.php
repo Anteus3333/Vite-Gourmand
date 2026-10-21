@@ -19,7 +19,7 @@ class HomeController {
     public function index() {
         $titrePage = "Accueil - Vite et Gourmand";
         
-        // 1. On instancie le modèle
+        // 1. On instancie le modèle (métier ; le SQL est dans AvisRepository)
         $avisModel = new AvisModel();
         
         // 2. On récupère les données (le tableau des avis)

@@ -1,15 +1,15 @@
 <?php
-// src/Services/StatsMongoService.php — stats dashboard depuis MongoDB Atlas
+// src/Repositories/CommandeStatsRepository.php — repository NoSQL (MongoDB Atlas) — stats dashboard depuis MongoDB Atlas
 
-require_once __DIR__ . '/MongoDatabase.php';
-require_once __DIR__ . '/../Models/CommandeModel.php';
-require_once __DIR__ . '/../Models/MenuModel.php';
+require_once __DIR__ . '/../Services/MongoDatabase.php';
+require_once __DIR__ . '/CommandeRepository.php';
+require_once __DIR__ . '/MenuRepository.php';
 
 // Regex est une classe qui permet de manipuler les expressions régulières
 // Arborescence d'installation de MongoDB dans vendor
 use MongoDB\BSON\Regex;
 
-class StatsMongoService {
+class CommandeStatsRepository {
 
     // le ? permet de dire que la variable peut être null
     private static ?string $derniereErreur = null;
@@ -46,8 +46,8 @@ class StatsMongoService {
      * @return int nombre de documents écrits
      */
     public function synchroniserDepuisMysql(): int {
-        $commandeModel = new CommandeModel();
-        $lignes = $commandeModel->getAllPourStatsMongo();
+        $commandeRepository = new CommandeRepository();
+        $lignes = $commandeRepository->getAllPourStatsMongo();
         $col = MongoDatabase::collection();
 
         // Suppression de toutes les commandes dans la collection MongoDB
@@ -58,7 +58,7 @@ class StatsMongoService {
         foreach ($lignes as $ligne) {
 
             // Conversion de la ligne MySQL en document MongoDB
-            // documentDepuisLigne est une méthode de la classe StatsMongoService
+            // documentDepuisLigne est une méthode de la classe CommandeStatsRepository
             $doc = $this->documentDepuisLigne($ligne);
             $ops[] = [
                 'replaceOne' => [
@@ -109,7 +109,7 @@ class StatsMongoService {
         } 
         catch (Throwable $e) {
             // Ne bloque pas le métier MySQL si Atlas est indisponible
-            error_log('StatsMongoService: ' . $e->getMessage());
+            error_log('CommandeStatsRepository: ' . $e->getMessage());
         }
     }
 
@@ -160,7 +160,7 @@ class StatsMongoService {
             return $rows;
         }
 
-        $menus = (new MenuModel())->getAllMenus();
+        $menus = (new MenuRepository())->getAllMenus();
         $rows = [];
         foreach ($menus as $menu) {
             $id = (int) $menu['menu_id'];

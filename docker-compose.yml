@@ -27,8 +27,9 @@ services:
     restart: unless-stopped
 
   db:
-    image: mysql:8.0
+    build: ./docker/mysql
     container_name: vite_gourmand_db
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     ports:
       # HeidiSQL : 127.0.0.1:3306 (arrêter le MySQL Laragon avant)
       - "3306:3306"
@@ -39,6 +40,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
     volumes:
       - db_data:/var/lib/mysql
+      # SET NAMES utf8mb4 est aussi en tête des .sql (sécurité accents)
       - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./sql/donnees_test.sql:/docker-entrypoint-initdb.d/02-donnees.sql:ro
     healthcheck:

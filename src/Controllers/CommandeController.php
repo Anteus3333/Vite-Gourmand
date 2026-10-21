@@ -8,12 +8,12 @@ require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
-require_once __DIR__ . '/../Services/StatsMongoService.php';
+require_once __DIR__ . '/../Models/CommandeStatsModel.php';
 
 class CommandeController {
     private CommandeModel $commandeModel;
     private MenuModel $menuModel;
-    private UtilisateurModel $userModel;
+    private UtilisateurModel $utilisateurModel;
     private PrixCommandeService $prixService;
     private DistanceService $distanceService;
     private array $config;
@@ -21,7 +21,7 @@ class CommandeController {
     public function __construct() {
         $this->commandeModel   = new CommandeModel();
         $this->menuModel       = new MenuModel();
-        $this->userModel       = new UtilisateurModel();
+        $this->utilisateurModel       = new UtilisateurModel();
         $this->prixService     = new PrixCommandeService();
         $this->distanceService = new DistanceService();
         $this->config          = require __DIR__ . '/../../config/commandeconfig.php';
@@ -39,7 +39,7 @@ class CommandeController {
             exit;
         }
 
-        $utilisateur = $this->userModel->findById((int) $_SESSION['utilisateur']['id']);
+        $utilisateur = $this->utilisateurModel->findById((int) $_SESSION['utilisateur']['id']);
         $menus       = $this->menuModel->getAllMenus(true);
         $titrePage   = 'Commander - Vite et Gourmand';
         $erreurs     = [];
@@ -153,7 +153,7 @@ class CommandeController {
 
                 $docStats = $this->commandeModel->getPourStatsMongo($numero);
                 if ($docStats) {
-                    (new StatsMongoService())->enregistrerCommande($docStats);
+                    (new CommandeStatsModel())->enregistrerCommande($docStats);
                 }
 
                 $this->envoyerMailConfirmation($old, $menu, $numero, $tarif);

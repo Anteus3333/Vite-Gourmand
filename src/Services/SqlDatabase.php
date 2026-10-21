@@ -1,5 +1,5 @@
 <?php
-// src/Services/SqlDatabase.php — connexion PDO MySQL
+// src/Services/SqlDatabase.php — connexion PDO MySQL centralisée (couche Database du pattern Repository)
 
 class SqlDatabase {
     private string $host;

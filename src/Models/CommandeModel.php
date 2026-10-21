@@ -1,571 +1,129 @@
 <?php
 // src/Models/CommandeModel.php
-
-require_once __DIR__ . '/../Services/SqlDatabase.php';
+// Couche métier : orchestre les règles et délègue l'accès données au Repository.
+require_once __DIR__ . '/../Repositories/CommandeRepository.php';
 
 class CommandeModel {
-    private $conn;
-    private array $config;
+    private CommandeRepository $repository;
 
     public function __construct() {
-        $database = new SqlDatabase();
-        $this->conn = $database->getConnection();
-        $this->config = require __DIR__ . '/../../config/commandeconfig.php';
+        $this->repository = new CommandeRepository();
     }
 
     public function genererNumero(): string {
-        return 'CMD-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+        return $this->repository->genererNumero();
     }
 
     public function creer(array $commande, int $menuId): string {
-        $numero = $this->genererNumero();
-
-        $stmt = $this->conn->prepare("
-            INSERT INTO Commande (
-                numero_commande, date_commande, date_prestation, heure_livraison,
-                adresse_livraison, ville_livraison, distance_km,
-                prix_menu, nombre_personne, prix_livraison, statut,
-                pret_materiel, restitution_materiel, utilisateur_id
-            ) VALUES (
-                :numero, CURDATE(), :date_prestation, :heure_livraison,
-                :adresse, :ville, :distance,
-                :prix_menu, :nb_personnes, :prix_livraison, :statut,
-                0, 0, :utilisateur_id
-            )
-        ");
-        $stmt->execute([
-            ':numero'          => $numero,
-            ':date_prestation' => $commande['date_prestation'],
-            ':heure_livraison' => $commande['heure_livraison'],
-            ':adresse'         => $commande['adresse_livraison'],
-            ':ville'           => $commande['ville_livraison'],
-            ':distance'        => $commande['distance_km'],
-            ':prix_menu'       => $commande['prix_menu'],
-            ':nb_personnes'    => $commande['nombre_personne'],
-            ':prix_livraison'  => $commande['prix_livraison'],
-            ':statut'          => $commande['statut'],
-            ':utilisateur_id'  => $commande['utilisateur_id'],
-        ]);
-
-        $stmt = $this->conn->prepare("
-            INSERT INTO commande_menu (numero_commande, menu_id) VALUES (:numero, :menu_id)
-        ");
-        $stmt->execute([':numero' => $numero, ':menu_id' => $menuId]);
-
-        $stmt = $this->conn->prepare("
-            UPDATE menu SET quantite_restante = quantite_restante - 1
-            WHERE menu_id = :menu_id AND quantite_restante > 0
-        ");
-        $stmt->execute([':menu_id' => $menuId]);
-
-        $this->ajouterSuivi($numero, $commande['statut']);
-
-        return $numero;
+        return $this->repository->creer($commande, $menuId);
     }
 
-    /** Liste des commandes d'un utilisateur (plus récentes en premier) */
     public function getByUtilisateur(int $utilisateurId): array {
-        $query = "
-            SELECT c.*, m.titre AS menu_titre, m.menu_id
-            FROM Commande c
-            JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
-            JOIN menu m ON cm.menu_id = m.menu_id
-            WHERE c.utilisateur_id = :id
-            ORDER BY c.date_commande DESC, c.numero_commande DESC
-        ";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':id' => $utilisateurId]);
-        return $stmt->fetchAll() ?: [];
+        return $this->repository->getByUtilisateur($utilisateurId);
     }
 
-    /** Détail d'une commande (vérifie qu'elle appartient à l'utilisateur) */
     public function getByNumeroPourUtilisateur(string $numero, int $utilisateurId): ?array {
-        $query = "
-            SELECT c.*, m.titre AS menu_titre, m.menu_id, m.nombre_personne_minimun, m.prix_par_personne
-            FROM Commande c
-            JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
-            JOIN menu m ON cm.menu_id = m.menu_id
-            WHERE c.numero_commande = :numero AND c.utilisateur_id = :id
-        ";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':numero' => $numero, ':id' => $utilisateurId]);
-        return $stmt->fetch() ?: null;
+        return $this->repository->getByNumeroPourUtilisateur($numero, $utilisateurId);
     }
 
-    /** Historique de suivi d'une commande */
     public function getSuivi(string $numero): array {
-        $query = "
-            SELECT statut, commentaire, date_modification
-            FROM suivi_commande
-            WHERE numero_commande = :numero
-            ORDER BY date_modification ASC, suivi_id ASC
-        ";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':numero' => $numero]);
-        return $stmt->fetchAll() ?: [];
+        return $this->repository->getSuivi($numero);
     }
 
-    /** Modifie une commande (tout sauf le menu — ECF) */
     public function modifier(string $numero, array $data): void {
-        $stmt = $this->conn->prepare("
-            UPDATE Commande SET
-                date_prestation = :date_prestation,
-                heure_livraison = :heure_livraison,
-                adresse_livraison = :adresse,
-                ville_livraison = :ville,
-                distance_km = :distance,
-                nombre_personne = :nb_personnes,
-                prix_menu = :prix_menu,
-                prix_livraison = :prix_livraison
-            WHERE numero_commande = :numero
-        ");
-        $stmt->execute([
-            ':numero'          => $numero,
-            ':date_prestation' => $data['date_prestation'],
-            ':heure_livraison' => $data['heure_livraison'],
-            ':adresse'         => $data['adresse_livraison'],
-            ':ville'           => $data['ville_livraison'],
-            ':distance'        => $data['distance_km'],
-            ':nb_personnes'    => $data['nombre_personne'],
-            ':prix_menu'       => $data['prix_menu'],
-            ':prix_livraison'  => $data['prix_livraison'],
-        ]);
-
-        $this->ajouterSuivi($numero, 'en_attente', 'Commande modifiée par le client');
+        $this->repository->modifier($numero, $data);
     }
 
-    /** Annule une commande et restitue le stock du menu */
     public function annuler(string $numero, int $menuId): void {
-        $stmt = $this->conn->prepare("
-            UPDATE Commande SET statut = 'annulee' WHERE numero_commande = :numero
-        ");
-        $stmt->execute([':numero' => $numero]);
-
-        $stmt = $this->conn->prepare("
-            UPDATE menu SET quantite_restante = quantite_restante + 1 WHERE menu_id = :id
-        ");
-        $stmt->execute([':id' => $menuId]);
-
-        $this->ajouterSuivi($numero, 'annulee');
+        $this->repository->annuler($numero, $menuId);
     }
 
     public function peutModifier(string $statut): bool {
-        return in_array($this->normaliserStatut($statut), $this->config['statuts_modifiables'], true);
+        return $this->repository->peutModifier($statut);
     }
 
     public function peutAnnuler(string $statut): bool {
-        return in_array($this->normaliserStatut($statut), $this->config['statuts_annulables'], true);
+        return $this->repository->peutAnnuler($statut);
     }
 
-    // Renvoie un statut compréhensible par l'utilisateur
-    // ex "en_attente" -> "En attente de validation"
     public function libelleStatut(string $statut): string {
-        $key = $this->normaliserStatut($statut);
-        return $this->config['libelles_statut'][$key] ?? ucfirst(str_replace('_', ' ', $key));
+        return $this->repository->libelleStatut($statut);
     }
 
-    // fonction appellée en public pour les vues
-    // même objectif que normaliserStatut mais elle est private et appellé pour
-    // l'usage interne au Model
     public function cleStatut(string $statut): string {
-        return $this->normaliserStatut($statut);
+        return $this->repository->cleStatut($statut);
     }
 
-    /** Toutes les commandes (espace employé), filtres statut et client optionnels */
     public function getAllToutes(?string $filtreStatut = null, ?int $clientId = null): array {
-        $query = "
-            SELECT c.*, m.titre AS menu_titre, m.menu_id,
-                   u.prenom AS client_prenom, u.nom AS client_nom,
-                   u.email AS client_email, u.telephone AS client_telephone
-            FROM Commande c
-            JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
-            JOIN menu m ON cm.menu_id = m.menu_id
-            JOIN utilisateur u ON c.utilisateur_id = u.utilisateur_id
-        ";
-        $params = [];
-        $conditions = [];
-
-        if ($filtreStatut !== null && $filtreStatut !== '') {
-            $conditions[] = "LOWER(REPLACE(REPLACE(c.statut, ' ', '_'), 'é', 'e')) = :statut";
-            $params[':statut'] = $this->normaliserStatut($filtreStatut);
-        }
-        if ($clientId !== null && $clientId > 0) {
-            $conditions[] = 'c.utilisateur_id = :client_id';
-            $params[':client_id'] = $clientId;
-        }
-
-        if ($conditions) {
-            $query .= ' WHERE ' . implode(' AND ', $conditions);
-        }
-
-        $query .= ' ORDER BY c.date_commande DESC, c.numero_commande DESC';
-
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute($params);
-        return $stmt->fetchAll() ?: [];
+        return $this->repository->getAllToutes($filtreStatut, $clientId);
     }
 
-    /**
-     * Commandes en cours (hors attente de validation, terminées et annulées).
-     * Triées par date de prestation croissante (plus urgentes en premier).
-     */
     public function getEnCours(int $limit = 5): array {
-        $exclus = ['en_attente', 'terminee', 'annulee'];
-
-        // array_filter filtre les commandes en fonction du statut
-        $enCours = array_values(array_filter(
-            $this->getAllToutes(),
-            fn(array $c): bool => !in_array($this->normaliserStatut($c['statut'] ?? ''), $exclus, true)
-        ));
-
-        // usort trie les commandes par date de prestation et heure de livraison
-        usort($enCours, static function (array $a, array $b): int {
-            $cmp = strcmp((string) ($a['date_prestation'] ?? ''), (string) ($b['date_prestation'] ?? ''));
-            if ($cmp !== 0) {
-                return $cmp;
-            }
-
-            // strcmp permet d'ordonner les heures de livraison
-            // si les heures sont égales, on trie par date de prestation
-            return strcmp((string) ($a['heure_livraison'] ?? ''), (string) ($b['heure_livraison'] ?? ''));
-        });
-
-        // array_slice retourne les $limit premières commandes
-        // max(0, $limit) permet de s'assurer que le nombre de commandes retournées 
-        // est positif
-        // $limit est le paramètre de cette fonction pour retourner 
-        // au max les 5 plus urgentes
-        return array_slice($enCours, 0, max(0, $limit));
+        return $this->repository->getEnCours($limit);
     }
 
-    /** Nombre de commandes en cours (hors attente / terminée / annulée). */
     public function compterEnCours(): int {
-        $exclus = ['en_attente', 'terminee', 'annulee'];
-        $total = 0;
-        foreach ($this->compterParStatut() as $statut => $nb) {
-            if (!in_array($statut, $exclus, true)) {
-                $total += $nb;
-            }
-        }
-        return $total;
+        return $this->repository->compterEnCours();
     }
 
-    /** Clients ayant passé au moins une commande (filtre employé). */
     public function getClientsAvecCommandes(): array {
-        $query = "
-            SELECT DISTINCT u.utilisateur_id, u.prenom, u.nom, u.email
-            FROM utilisateur u
-            INNER JOIN Commande c ON c.utilisateur_id = u.utilisateur_id
-            ORDER BY u.nom ASC, u.prenom ASC, u.email ASC
-        ";
-        $stmt = $this->conn->query($query);
-        return $stmt->fetchAll() ?: [];
+        return $this->repository->getClientsAvecCommandes();
     }
 
-    /** Détail commande pour l'employé (sans filtre utilisateur) */
     public function getByNumero(string $numero): ?array {
-        $query = "
-            SELECT c.*, m.titre AS menu_titre, m.menu_id,
-                   u.prenom AS client_prenom, u.nom AS client_nom,
-                   u.email AS client_email, u.telephone AS client_telephone,
-                   u.adresse_postale AS client_adresse
-            FROM Commande c
-            JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
-            JOIN menu m ON cm.menu_id = m.menu_id
-            JOIN utilisateur u ON c.utilisateur_id = u.utilisateur_id
-            WHERE c.numero_commande = :numero
-        ";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':numero' => $numero]);
-        return $stmt->fetch() ?: null;
+        return $this->repository->getByNumero($numero);
     }
 
-    /** Compteurs par statut pour le tableau de bord employé */
     public function compterParStatut(): array {
-        $query = "
-            SELECT statut, COUNT(*) AS total
-            FROM Commande
-            GROUP BY statut
-        ";
-        $stmt = $this->conn->query($query);
-        $counts = [];
-        foreach ($stmt->fetchAll() ?: [] as $row) {
-            $counts[$this->normaliserStatut($row['statut'] ?? '')] = (int) $row['total'];
-        }
-        return $counts;
+        return $this->repository->compterParStatut();
     }
 
-    /** Export MySQL → Mongo (tous les documents stats). */
     public function getAllPourStatsMongo(): array {
-        $query = "
-            SELECT c.numero_commande,
-                   DATE(c.date_commande) AS date_commande,
-                   c.prix_menu,
-                   c.prix_livraison,
-                   (c.prix_menu + c.prix_livraison) AS montant,
-                   c.statut,
-                   m.menu_id,
-                   m.titre AS menu_titre
-            FROM Commande c
-            INNER JOIN commande_menu cm ON cm.numero_commande = c.numero_commande
-            INNER JOIN menu m ON m.menu_id = cm.menu_id
-            ORDER BY c.date_commande ASC, c.numero_commande ASC
-        ";
-        $stmt = $this->conn->query($query);
-        return $stmt->fetchAll() ?: [];
+        return $this->repository->getAllPourStatsMongo();
     }
 
-    /** Une commande + menu pour upsert Mongo. */
     public function getPourStatsMongo(string $numero): ?array {
-        $query = "
-            SELECT c.numero_commande,
-                   DATE(c.date_commande) AS date_commande,
-                   c.prix_menu,
-                   c.prix_livraison,
-                   (c.prix_menu + c.prix_livraison) AS montant,
-                   c.statut,
-                   m.menu_id,
-                   m.titre AS menu_titre
-            FROM Commande c
-            INNER JOIN commande_menu cm ON cm.numero_commande = c.numero_commande
-            INNER JOIN menu m ON m.menu_id = cm.menu_id
-            WHERE c.numero_commande = :numero
-            LIMIT 1
-        ";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':numero' => $numero]);
-        $row = $stmt->fetch();
-        return $row ?: null;
+        return $this->repository->getPourStatsMongo($numero);
     }
 
-    /**
-     * Statistiques commandes et chiffre d'affaires par menu (dashboard admin).
-     * Les commandes annulées sont exclues.
-     *
-     * @return array<int, array{menu_id: int, menu_titre: string, nb_commandes: int, chiffre_affaires: float}>
-     */
     public function getStatsParMenu(?string $dateDebut = null, ?string $dateFin = null, ?int $menuId = null): array {
-        $query = "
-            SELECT m.menu_id,
-                   m.titre AS menu_titre,
-                   COUNT(c.numero_commande) AS nb_commandes,
-                   COALESCE(SUM(c.prix_menu + c.prix_livraison), 0) AS chiffre_affaires
-            FROM menu m
-            LEFT JOIN commande_menu cm ON cm.menu_id = m.menu_id
-            LEFT JOIN Commande c ON c.numero_commande = cm.numero_commande
-                AND LOWER(REPLACE(REPLACE(c.statut, ' ', '_'), 'é', 'e')) != 'annulee'
-        ";
-        $params = [];
-        $conditions = [];
-
-        if ($dateDebut !== null && $dateDebut !== '') {
-            $conditions[] = "(c.numero_commande IS NULL OR c.date_commande >= :date_debut)";
-            $params[':date_debut'] = $dateDebut;
-        }
-        if ($dateFin !== null && $dateFin !== '') {
-            $conditions[] = "(c.numero_commande IS NULL OR c.date_commande <= :date_fin)";
-            $params[':date_fin'] = $dateFin;
-        }
-        if ($menuId !== null && $menuId > 0) {
-            $conditions[] = "m.menu_id = :menu_id";
-            $params[':menu_id'] = $menuId;
-        }
-
-        if ($conditions) {
-            $query .= ' WHERE ' . implode(' AND ', $conditions);
-        }
-
-        $query .= "
-            GROUP BY m.menu_id, m.titre
-            HAVING nb_commandes > 0 OR :sans_filtre_date = 1
-            ORDER BY nb_commandes DESC, m.titre ASC
-        ";
-
-        $sansFiltreDate = ($dateDebut === null || $dateDebut === '') && ($dateFin === null || $dateFin === '') ? 1 : 0;
-        $params[':sans_filtre_date'] = $sansFiltreDate;
-
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll() ?: [];
-
-        return array_map(static function (array $row): array {
-            return [
-                'menu_id'           => (int) $row['menu_id'],
-                'menu_titre'        => $row['menu_titre'],
-                'nb_commandes'      => (int) $row['nb_commandes'],
-                'chiffre_affaires'  => round((float) $row['chiffre_affaires'], 2),
-            ];
-        }, $rows);
+        return $this->repository->getStatsParMenu($dateDebut, $dateFin, $menuId);
     }
 
-    /** Totaux commandes et CA pour une période / menu donnés (hors annulées). */
     public function getTotauxStats(?string $dateDebut = null, ?string $dateFin = null, ?int $menuId = null): array {
-        $query = "
-            SELECT COUNT(c.numero_commande) AS nb_commandes,
-                   COALESCE(SUM(c.prix_menu + c.prix_livraison), 0) AS chiffre_affaires
-            FROM Commande c
-            JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
-            WHERE LOWER(REPLACE(REPLACE(c.statut, ' ', '_'), 'é', 'e')) != 'annulee'
-        ";
-        $params = [];
-
-        if ($dateDebut !== null && $dateDebut !== '') {
-            $query .= ' AND c.date_commande >= :date_debut';
-            $params[':date_debut'] = $dateDebut;
-        }
-        if ($dateFin !== null && $dateFin !== '') {
-            $query .= ' AND c.date_commande <= :date_fin';
-            $params[':date_fin'] = $dateFin;
-        }
-        if ($menuId !== null && $menuId > 0) {
-            $query .= ' AND cm.menu_id = :menu_id';
-            $params[':menu_id'] = $menuId;
-        }
-
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute($params);
-        $row = $stmt->fetch() ?: [];
-
-        return [
-            'nb_commandes'     => (int) ($row['nb_commandes'] ?? 0),
-            'chiffre_affaires' => round((float) ($row['chiffre_affaires'] ?? 0), 2),
-        ];
+        return $this->repository->getTotauxStats($dateDebut, $dateFin, $menuId);
     }
 
-    /** Statuts suivants autorisés pour une commande */
     public function getTransitionsPossibles(string $statutActuel): array {
-        $cle = $this->normaliserStatut($statutActuel);
-        return $this->config['workflow_employe'][$cle] ?? [];
+        return $this->repository->getTransitionsPossibles($statutActuel);
     }
 
-    /** Annulation par l'employé avec motif et mode de contact (ECF) */
     public function annulerParEmploye(string $numero, int $menuId, string $motif, string $modeContact): bool {
-        $commande = $this->getByNumero($numero);
-        if (!$commande) {
-            return false;
-        }
-
-        $actuel = $this->normaliserStatut($commande['statut'] ?? '');
-        if (!in_array('annulee', $this->getTransitionsPossibles($actuel), true)) {
-            return false;
-        }
-
-        $stmt = $this->conn->prepare("
-            UPDATE Commande SET
-                statut = 'annulee',
-                motif_annulation = :motif,
-                mode_contact_annulation = :mode_contact
-            WHERE numero_commande = :numero
-        ");
-        $stmt->execute([
-            ':motif'         => $motif,
-            ':mode_contact'  => $modeContact,
-            ':numero'        => $numero,
-        ]);
-
-        $stmt = $this->conn->prepare("
-            UPDATE menu SET quantite_restante = quantite_restante + 1 WHERE menu_id = :id
-        ");
-        $stmt->execute([':id' => $menuId]);
-
-        $note = 'Motif : ' . $motif . ' — Contact client : ' . $this->libelleModeContact($modeContact);
-        $this->ajouterSuivi($numero, 'annulee', $note);
-
-        return true;
+        return $this->repository->annulerParEmploye($numero, $menuId, $motif, $modeContact);
     }
 
     public function libelleModeContact(string $mode): string {
-        $modes = $this->config['modes_contact_annulation'] ?? [];
-        return $modes[$mode] ?? ucfirst($mode);
+        return $this->repository->libelleModeContact($mode);
     }
 
     public function getModesContactAnnulation(): array {
-        return $this->config['modes_contact_annulation'] ?? [];
+        return $this->repository->getModesContactAnnulation();
     }
+
     public function changerStatut(string $numero, string $nouveauStatut, int $menuId): bool {
-        $commande = $this->getByNumero($numero);
-        if (!$commande) {
-            return false;
-        }
-
-        $actuel  = $this->normaliserStatut($commande['statut'] ?? '');
-        $nouveau = $this->normaliserStatut($nouveauStatut);
-        $autorises = $this->getTransitionsPossibles($actuel);
-
-        if (!in_array($nouveau, $autorises, true) || $nouveau === 'annulee') {
-            return false;
-        }
-
-        $stmt = $this->conn->prepare("
-            UPDATE Commande SET statut = :statut WHERE numero_commande = :numero
-        ");
-        $stmt->execute([':statut' => $nouveau, ':numero' => $numero]);
-
-        if ($nouveau === 'annulee' && $actuel !== 'annulee') {
-            $stmt = $this->conn->prepare("
-                UPDATE menu SET quantite_restante = quantite_restante + 1 WHERE menu_id = :id
-            ");
-            $stmt->execute([':id' => $menuId]);
-        }
-
-        $this->ajouterSuivi($numero, $nouveau);
-        return true;
+        return $this->repository->changerStatut($numero, $nouveauStatut, $menuId);
     }
 
-    /** Met à jour les indicateurs de prêt / restitution du matériel */
     public function setMateriel(string $numero, bool $pret, bool $restitution): void {
-        $stmt = $this->conn->prepare("
-            UPDATE Commande SET pret_materiel = :pret, restitution_materiel = :restitution
-            WHERE numero_commande = :numero
-        ");
-        $stmt->execute([
-            ':pret'          => $pret ? 1 : 0,
-            ':restitution'   => $restitution ? 1 : 0,
-            ':numero'        => $numero,
-        ]);
+        $this->repository->setMateriel($numero, $pret, $restitution);
     }
 
-    /** Commandes terminées éligibles à un avis (pas encore d'avis déposé) */
     public function getTermineesSansAvis(int $utilisateurId): array {
-        $query = "
-            SELECT c.*, m.titre AS menu_titre, m.menu_id
-            FROM Commande c
-            JOIN commande_menu cm ON c.numero_commande = cm.numero_commande
-            JOIN menu m ON cm.menu_id = m.menu_id
-            LEFT JOIN avis a ON a.numero_commande = c.numero_commande AND a.utilisateur_id = c.utilisateur_id
-            WHERE c.utilisateur_id = :id
-              AND LOWER(REPLACE(REPLACE(c.statut, ' ', '_'), 'é', 'e')) = 'terminee'
-              AND a.avis_id IS NULL
-            ORDER BY c.date_prestation DESC
-        ";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':id' => $utilisateurId]);
-        return $stmt->fetchAll() ?: [];
+        return $this->repository->getTermineesSansAvis($utilisateurId);
     }
 
     public function estTerminee(string $statut): bool {
-        return $this->normaliserStatut($statut) === 'terminee';
+        return $this->repository->estTerminee($statut);
     }
 
-    // Normalise le statut de la commande
-    // On remplace les espaces par des underscores et les accents 
-    // par les lettres correspondantes
-    private function normaliserStatut(string $statut): string {
-        $statut = mb_strtolower(trim($statut));
-        $statut = str_replace([' ', 'é', 'è', 'ê'], ['_', 'e', 'e', 'e'], $statut);
-        return $statut;
-    }
-
-    // Ajoute un suivi à la commande avec un statut dans la table suivi_commande
-    private function ajouterSuivi(string $numero, string $statut, ?string $note = null): void {
-        $stmt = $this->conn->prepare("
-            INSERT INTO suivi_commande (numero_commande, statut, commentaire)
-            VALUES (:numero, :statut, :commentaire)
-        ");
-        $stmt->execute([
-            ':numero'      => $numero,
-            ':statut'      => $this->normaliserStatut($statut),
-            ':commentaire' => $note,
-        ]);
-    }
 }

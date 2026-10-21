@@ -1,0 +1,12 @@
+# Force UTF-8 pour le serveur ET le client (import initdb.d inclus).
+# Sans ça, le client MySQL Docker importe les .sql en latin1 → accents cassés (dÃ©licieux).
+
+[client]
+default-character-set=utf8mb4
+
+[mysql]
+default-character-set=utf8mb4
+
+[mysqld]
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci

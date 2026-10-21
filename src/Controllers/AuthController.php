@@ -11,18 +11,18 @@ require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 
 class AuthController {
-    private $model;
+    private UtilisateurModel $utilisateurModel;
 
     // Le constructeur est une méthode qui est appelée 
     // lors de l'instanciation de la classe
     // Elle construit un objet de la classe UtilisateurModel
-    // dont le contenu est stocké dans la propriété $this->model
+    // dont le contenu est stocké dans la propriété $this->utilisateurModel
     // UtilisateurModel est une classe qui contient les méthodes
     // pour la gestion des utilisateurs
-    // Elle est stockée dans la propriété $this->model
+    // Elle est stockée dans la propriété $this->utilisateurModel
 
     public function __construct() {
-        $this->model = new UtilisateurModel();
+        $this->utilisateurModel = new UtilisateurModel();
     }
 
     /* =========================================
@@ -90,8 +90,8 @@ class AuthController {
 
             // Si il n'y a pas d'erreurs mais que l'email existe dans la base de données
             // Le site va dire mail déjà existant
-            if (empty($erreurs) && ($existant = $this->model->findByEmail($old['email']))) {
-                if ($this->model->estEmailVerifie($existant)) {
+            if (empty($erreurs) && ($existant = $this->utilisateurModel->findByEmail($old['email']))) {
+                if ($this->utilisateurModel->estEmailVerifie($existant)) {
                     $erreurs[] = "Un compte existe déjà avec cette adresse mail.";
                 } 
                 else {
@@ -99,7 +99,7 @@ class AuthController {
                     // On réactive l'inscription non verifiée
                     // Compte créé mais jamais confirmé : on renvoie un nouveau lien
                     // Appelle la méthode reactiverInscriptionNonVerifiee() de la classe UtilisateurModel
-                    $token = $this->model->reactiverInscriptionNonVerifiee(
+                    $token = $this->utilisateurModel->reactiverInscriptionNonVerifiee(
                         (int) $existant['utilisateur_id'],
                         $old + ['password' => $password]
                     );
@@ -120,7 +120,7 @@ class AuthController {
             }
 
             if (empty($erreurs)) {
-                $compte = $this->model->create($old + ['password' => $password]);
+                $compte = $this->utilisateurModel->create($old + ['password' => $password]);
                 $this->envoyerMailConfirmation($old['email'], $old['prenom'], $compte['token']);
 
                 $_SESSION['flash_succes'] = 'Votre compte a été créé. Un e-mail de confirmation vient de vous être envoyé : cliquez sur le lien pour activer votre compte avant de vous connecter.';
@@ -159,7 +159,7 @@ class AuthController {
 
             } 
             else {
-                $utilisateur = $this->model->findByEmail($old['email']);
+                $utilisateur = $this->utilisateurModel->findByEmail($old['email']);
 
                 // Message volontairement vague : on ne révèle pas si l'email existe
                 if (!$utilisateur || !password_verify($password, $utilisateur['password'])) {
@@ -170,7 +170,7 @@ class AuthController {
                     $tentatives->enregistrer($old['email'], $ip);
                     $erreurs[] = "Ce compte a été désactivé. Contactez l'administration.";
                 } 
-                elseif (!$this->model->estEmailVerifie($utilisateur)) {
+                elseif (!$this->utilisateurModel->estEmailVerifie($utilisateur)) {
                     $erreurs[] = "Votre adresse e-mail n'est pas encore confirmée. Consultez votre boîte mail (et les spams) pour activer votre compte.";
                 } 
                 else {
@@ -183,7 +183,7 @@ class AuthController {
                     $_SESSION['utilisateur'] = [
                         'id'     => $utilisateur['utilisateur_id'],
                         'prenom' => $utilisateur['prenom'],
-                        'role'   => $this->model->getRole((int) $utilisateur['utilisateur_id']) ?? 'utilisateur',
+                        'role'   => $this->utilisateurModel->getRole((int) $utilisateur['utilisateur_id']) ?? 'utilisateur',
                     ];
 
                     // Cette méthode se trouve dans la classe AuthController
@@ -279,7 +279,7 @@ class AuthController {
             }
 
             $email = trim($_POST['email'] ?? '');
-            $utilisateur = $email !== '' ? $this->model->findByEmail($email) : null;
+            $utilisateur = $email !== '' ? $this->utilisateurModel->findByEmail($email) : null;
 
             if ($utilisateur) {
                 // Jeton aléatoire valable 1 heure
@@ -288,7 +288,7 @@ class AuthController {
                 // Appelle la méthode saveResetToken() de la classe UtilisateurModel
                 // Cette méthode enregistre le jeton de réinitialisation dans la base de données
                 // Elle prend en paramètre l'ID de l'utilisateur et le jeton de réinitialisation
-                $this->model->saveResetToken((int) $utilisateur['utilisateur_id'], $token);
+                $this->utilisateurModel->saveResetToken((int) $utilisateur['utilisateur_id'], $token);
 
                 // Appelle la méthode UrlHelper::absolue() de la classe UrlHelper
                 // Cette méthode construit l'URL absolue du lien de réinitialisation
@@ -334,7 +334,7 @@ class AuthController {
         $erreurs = [];
 
         $token = $_POST['token'] ?? $_GET['token'] ?? '';
-        $utilisateur = $token !== '' ? $this->model->findByValidResetToken($token) : null;
+        $utilisateur = $token !== '' ? $this->utilisateurModel->findByValidResetToken($token) : null;
 
         if (!$utilisateur) {
             $_SESSION['flash_erreur'] = "Ce lien de réinitialisation est invalide ou a expiré. Merci de refaire une demande.";
@@ -356,7 +356,7 @@ class AuthController {
             }
 
             if (empty($erreurs)) {
-                $this->model->updatePassword((int) $utilisateur['utilisateur_id'], $password);
+                $this->utilisateurModel->updatePassword((int) $utilisateur['utilisateur_id'], $password);
                 $mailOk = (new GmailMailer())->envoyerAlerteMotDePasseModifie($utilisateur);
                 $_SESSION['flash_succes'] = $mailOk
                     ? 'Votre mot de passe a bien été modifié. Un e-mail de confirmation vous a été envoyé. Vous pouvez vous connecter.'
@@ -374,7 +374,7 @@ class AuthController {
        ========================================= */
     public function confirmerEmail(): void {
         $token = trim($_GET['token'] ?? '');
-        $utilisateur = $token !== '' ? $this->model->findByValidEmailToken($token) : null;
+        $utilisateur = $token !== '' ? $this->utilisateurModel->findByValidEmailToken($token) : null;
 
         if (!$utilisateur) {
             $_SESSION['flash_erreur'] = 'Ce lien de confirmation est invalide ou a expiré. Créez un nouveau compte ou contactez-nous.';
@@ -382,7 +382,7 @@ class AuthController {
             exit;
         }
 
-        $this->model->confirmerEmail((int) $utilisateur['utilisateur_id']);
+        $this->utilisateurModel->confirmerEmail((int) $utilisateur['utilisateur_id']);
 
         (new GmailMailer())->send(
             $utilisateur['email'],

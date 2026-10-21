@@ -1,7 +1,7 @@
 <?php
 // src/Controllers/Traits/GestionCommandesAvisTrait.php — commandes et avis (admin + employé)
 
-require_once __DIR__ . '/../../Services/StatsMongoService.php';
+require_once __DIR__ . '/../../Models/CommandeStatsModel.php';
 require_once __DIR__ . '/../../Services/UrlHelper.php';
 require_once __DIR__ . '/../../Services/Csrf.php';
 require_once __DIR__ . '/../../Services/GmailMailer.php';
@@ -78,7 +78,7 @@ trait GestionCommandesAvisTrait {
 
             $docStats = $this->commandeModel->getPourStatsMongo($numero);
             if ($docStats) {
-                (new StatsMongoService())->enregistrerCommande($docStats);
+                (new CommandeStatsModel())->enregistrerCommande($docStats);
             }
 
             if ($this->commandeModel->estTerminee($nouveauStatut)) {
@@ -135,7 +135,7 @@ trait GestionCommandesAvisTrait {
 
             $docStats = $this->commandeModel->getPourStatsMongo($numero);
             if ($docStats) {
-                (new StatsMongoService())->enregistrerCommande($docStats);
+                (new CommandeStatsModel())->enregistrerCommande($docStats);
             }
         } else {
             $_SESSION['flash_erreur'] = 'Cette commande ne peut pas être annulée à ce stade.';

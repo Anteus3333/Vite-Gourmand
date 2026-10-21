@@ -9,11 +9,11 @@ require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 require_once __DIR__ . '/../Services/GmailMailer.php';
-require_once __DIR__ . '/../Services/StatsMongoService.php';
+require_once __DIR__ . '/../Models/CommandeStatsModel.php';
 
 class CompteController {
     private CommandeModel $commandeModel;
-    private UtilisateurModel $userModel;
+    private UtilisateurModel $utilisateurModel;
     private MenuModel $menuModel;
     private AvisModel $avisModel;
     private PrixCommandeService $prixService;
@@ -21,7 +21,7 @@ class CompteController {
 
     public function __construct() {
         $this->commandeModel   = new CommandeModel();
-        $this->userModel       = new UtilisateurModel();
+        $this->utilisateurModel       = new UtilisateurModel();
         $this->menuModel       = new MenuModel();
         $this->avisModel       = new AvisModel();
         $this->prixService     = new PrixCommandeService();
@@ -31,7 +31,7 @@ class CompteController {
     /** Tableau de bord : accueil espace utilisateur */
     public function index() {
         $this->exigerConnexion();
-        $utilisateur = $this->userModel->findById($this->userId());
+        $utilisateur = $this->utilisateurModel->findById($this->userId());
         $commandes   = array_slice($this->commandeModel->getByUtilisateur($this->userId()), 0, 3);
         $commandeModel = $this->commandeModel;
 
@@ -177,7 +177,7 @@ class CompteController {
 
         $docStats = $this->commandeModel->getPourStatsMongo($numero);
         if ($docStats) {
-            (new StatsMongoService())->enregistrerCommande($docStats);
+            (new CommandeStatsModel())->enregistrerCommande($docStats);
         }
 
         $_SESSION['flash_succes'] = 'Votre commande a bien été annulée.';
@@ -188,7 +188,7 @@ class CompteController {
     /** Modification des informations personnelles */
     public function profil() {
         $this->exigerConnexion();
-        $utilisateur = $this->userModel->findById($this->userId());
+        $utilisateur = $this->utilisateurModel->findById($this->userId());
         $erreurs     = [];
         $old = [
             'nom'             => $utilisateur['nom'] ?? '',
@@ -220,7 +220,7 @@ class CompteController {
             if ($old['ville'] === '') $erreurs[] = 'La ville est obligatoire.';
 
             if (empty($erreurs)) {
-                $this->userModel->updateProfil($this->userId(), $old);
+                $this->utilisateurModel->updateProfil($this->userId(), $old);
                 $_SESSION['utilisateur']['prenom'] = $old['prenom'];
                 $_SESSION['flash_succes'] = 'Vos informations ont bien été mises à jour.';
                 header('Location: ' . BASE_URL . '/mon-compte/profil');
@@ -243,7 +243,7 @@ class CompteController {
             exit;
         }
 
-        $utilisateur = $this->userModel->findById($this->userId());
+        $utilisateur = $this->utilisateurModel->findById($this->userId());
         $erreursMdp = [];
 
         $actuel       = $_POST['password_actuel'] ?? '';
@@ -270,7 +270,7 @@ class CompteController {
             exit;
         }
 
-        $this->userModel->updatePassword($this->userId(), $nouveau);
+        $this->utilisateurModel->updatePassword($this->userId(), $nouveau);
         $mailOk = (new GmailMailer())->envoyerAlerteMotDePasseModifie($utilisateur);
         $_SESSION['flash_succes'] = $mailOk
             ? 'Votre mot de passe a bien été modifié. Un e-mail de confirmation vous a été envoyé.'
@@ -310,14 +310,14 @@ class CompteController {
             exit;
         }
 
-        $utilisateur = $this->userModel->findById($this->userId());
+        $utilisateur = $this->utilisateurModel->findById($this->userId());
         if (!$utilisateur || !password_verify($password, $utilisateur['password'] ?? '')) {
             $_SESSION['flash_erreur'] = 'Mot de passe incorrect. Le compte n\'a pas été supprimé.';
             header('Location: ' . BASE_URL . '/mon-compte/profil');
             exit;
         }
 
-        if (!$this->userModel->supprimerCompteClient($this->userId())) {
+        if (!$this->utilisateurModel->supprimerCompteClient($this->userId())) {
             $_SESSION['flash_erreur'] = 'La suppression du compte a échoué. Contactez-nous si le problème persiste.';
             header('Location: ' . BASE_URL . '/mon-compte/profil');
             exit;
