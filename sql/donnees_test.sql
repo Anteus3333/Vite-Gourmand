@@ -8,6 +8,8 @@
 --
 -- Mot de passe des comptes test : Test@123456
 
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- -----------------------------------------------------
 -- Référentiels : thèmes, régimes, allergènes
 -- -----------------------------------------------------

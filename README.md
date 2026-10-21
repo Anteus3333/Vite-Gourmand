@@ -102,7 +102,7 @@ docker compose down -v
 docker compose up -d --build
 ```
 
-Fichiers Docker versionnés : `Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`.
+Fichiers Docker versionnés : `Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`, `docker/mysql/` (image MySQL UTF-8 — évite les accents cassés type `dÃ©licieux` à l’import).
 
 > **Node.js** : non inclus dans Compose — le front est en HTML/CSS/JS vanilla (pas de build Vite/Webpack).
 
