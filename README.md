@@ -68,7 +68,7 @@ Projet **ECF Studi** — Développeur web et web mobile : analyse des besoins, m
 
 ## Installation avec Docker (recommandé)
 
-Un nouveau développeur clone le dépôt et lance la stack complète (Apache/PHP 8.2 + MySQL 8).
+Un nouveau développeur clone le dépôt et lance la stack complète (Apache/PHP 8.4 + MySQL 8).
 
 > **Avant de démarrer :** arrêter Laragon (conflit possible sur les ports **80** et **3306**).  
 > **Premier build :** `docker compose up -d --build` peut prendre plusieurs minutes (téléchargement des images + compilation PHP / MongoDB).
@@ -81,7 +81,7 @@ docker compose up -d --build
 
 | Service | Rôle | Accès |
 |---------|------|--------|
-| `web` | PHP 8.2 + Apache (`DocumentRoot` = `public/`) | [http://localhost:8080](http://localhost:8080) |
+| `web` | PHP 8.4 + Apache (`DocumentRoot` = `public/`) | [http://localhost:8080](http://localhost:8080) |
 | `db` | MySQL 8 — schéma + données de test au 1er démarrage | `127.0.0.1:3306` |
 
 Identifiants MySQL (conteneur) : utilisateur `vite` / mot de passe `vite` (root : `root`).  
@@ -240,7 +240,7 @@ Vite-Gourmand/
 ├── config/
 ├── sql/                    # schema + fixtures (import auto sous Docker)
 ├── docker/                 # entrypoint Apache/PHP
-├── Dockerfile              # Image PHP 8.2 + Apache
+├── Dockerfile              # Image PHP 8.4 + Apache
 ├── docker-compose.yml      # Services web + MySQL
 ├── docs/                   # Déploiement, parcours, rapport ECF
 ├── scripts/                # sync_stats_mongo.php (stats admin Mongo)

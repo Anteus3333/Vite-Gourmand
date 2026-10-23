@@ -1,11 +1,11 @@
-# PHP 8.2 + Apache — environnement Docker ECF (Vite et Gourmand)
-FROM php:8.2-apache
+# PHP 8.4 + Apache — aligné Infomaniak (version recommandée)
+FROM php:8.4-apache
 
 # Extensions PHP (PDO MySQL, GD, MongoDB pour stats admin)
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 # mongodb 1.21.x : compatible avec mongodb/mongodb 1.21 du composer.lock
 # (l’extension 2.x casse composer install avec ce lock)
-RUN install-php-extensions pdo_mysql gd mongodb-1.21.0 zip
+RUN install-php-extensions pdo_mysql gd mongodb-1.21.12 zip
 
 # Composer (install des packages au démarrage via entrypoint)
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
