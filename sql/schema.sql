@@ -191,6 +191,7 @@ CREATE TABLE `plat` (
 CREATE TABLE `contenu_menu` (
   `menu_id` INT NOT NULL,
   `plat_id` INT NOT NULL,
+  `ordre` INT NOT NULL DEFAULT 1,
   PRIMARY KEY (`menu_id`, `plat_id`),
   INDEX `fk_menu_has_plat_plat1_idx` (`plat_id`),
   INDEX `fk_menu_has_plat_menu1_idx` (`menu_id`),

@@ -226,6 +226,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Formulaires
     // -------------------------------------------------------
 
+    // Champs fichier personnalisés (.file-field) : nom du fichier sous le bouton
+    document.querySelectorAll('.file-field__input').forEach((input) => {
+        const status = input.closest('.file-field')?.querySelector('[data-file-status]');
+        if (!status) {
+            return;
+        }
+        const majStatut = () => {
+            status.textContent = input.files?.[0]?.name || 'Aucun fichier choisi';
+        };
+        input.addEventListener('change', majStatut);
+        majStatut();
+    });
+
     // Formulaires [data-confirm]
     document.querySelectorAll('form[data-confirm]').forEach((form) => {
         form.addEventListener('submit', (e) => {
@@ -478,14 +491,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // markDirty est une fonction qui permet de marquer un formulaire comme étant modifié
         // elle ajoute le formulaire à l'ensemble des formulaires modifiés
         // et elle ajoute l'attribut data-abandon-dirty à ce formulaire
+        function syncDirtySaveButtons(form) {
+            const dirty = isFormDirty(form);
+            form.querySelectorAll('[data-enable-when-dirty]').forEach((btn) => {
+                btn.disabled = !dirty;
+            });
+        }
+
         function markDirty(form) {
             dirtyForms.add(form);
             form.dataset.abandonDirty = '1';
+            syncDirtySaveButtons(form);
         }
 
         function markClean(form) {
             dirtyForms.delete(form);
             delete form.dataset.abandonDirty;
+            syncDirtySaveButtons(form);
         }
 
         function isFormDirty(form) {
@@ -502,15 +524,48 @@ document.addEventListener('DOMContentLoaded', () => {
             return forms.some(isFormDirty);
         }
 
+        // Instantané du formulaire pour savoir si on est vraiment « modifié »
+        // (ex. cocher puis décocher le même allergène → re-griser Sauvegarder)
+        function snapshotForm(form) {
+            const data = new FormData(form);
+            const fields = [];
+            for (const [key, value] of data.entries()) {
+                if (value instanceof File) {
+                    continue;
+                }
+                fields.push(key + '=' + String(value));
+            }
+            fields.sort();
+
+            const files = [];
+            form.querySelectorAll('input[type="file"]').forEach((input) => {
+                const file = input.files && input.files[0];
+                files.push(
+                    (input.name || input.id || '') + '=' +
+                    (file ? (file.name + ':' + file.size + ':' + file.lastModified) : '')
+                );
+            });
+            files.sort();
+
+            return JSON.stringify({ fields, files });
+        }
+
         // watchForm est une fonction qui permet de surveiller un formulaire
         // elle prend en paramètre un formulaire
-        // elle va écouter les évènements input, change et submit du formulaire
-        // elle va marquer le formulaire comme étant modifié lorsque l'un de ces évènements est déclenché
+        // elle compare l'état courant à l'instantané initial
         function watchForm(form) {
-            const onDirty = () => markDirty(form);
-            form.addEventListener('input', onDirty);
-            form.addEventListener('change', onDirty);
+            form.dataset.abandonSnapshot = snapshotForm(form);
+            const onChange = () => {
+                if (snapshotForm(form) !== form.dataset.abandonSnapshot) {
+                    markDirty(form);
+                } else {
+                    markClean(form);
+                }
+            };
+            form.addEventListener('input', onChange);
+            form.addEventListener('change', onChange);
             form.addEventListener('submit', () => markClean(form));
+            syncDirtySaveButtons(form);
         }
 
         const formGuards = Array.from(document.querySelectorAll('form[data-abandon-guard]'));
@@ -547,9 +602,10 @@ document.addEventListener('DOMContentLoaded', () => {
         function optionsForLeave() {
             const source = dirtySource();
             return {
-                titre: source?.getAttribute('data-abandon-titre') || 'Confirmation',
-                okLabel: source?.getAttribute('data-abandon-ok') || 'Confirmer',
-                cancelLabel: source?.getAttribute('data-abandon-cancel') || 'Annuler',
+                titre: source?.getAttribute('data-abandon-titre') || 'Modifications non enregistrées',
+                okLabel: source?.getAttribute('data-abandon-ok') || 'Quitter',
+                cancelLabel: source?.getAttribute('data-abandon-cancel') || 'Rester',
+                focusCancel: true,
             };
         }
 
@@ -557,9 +613,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const source = dirtySource();
             if (source) {
                 return source.getAttribute('data-abandon-message')
-                    || 'Des modifications non enregistrées seront perdues. Quitter ?';
+                    || 'Des modifications non enregistrées seront perdues. Quitter cette page ?';
             }
-            return 'Des modifications non enregistrées seront perdues. Quitter ?';
+            return 'Des modifications non enregistrées seront perdues. Quitter cette page ?';
         }
 
         // pageIsDirty est une fonction qui permet de vérifier 
@@ -572,9 +628,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 formGuards.forEach(markClean);
                 pageForms.forEach(markClean);
                 window.location.href = url;
-            }, { ...optionsForLeave(), focusCancel: true });
+            }, optionsForLeave());
         }
 
+        // Alerte système (non stylable) : flèche retour navigateur, F5, fermeture d'onglet.
+        // La modale du site reste pour les clics sur liens / data-navigate dans la page.
         window.addEventListener('beforeunload', (e) => {
             if (!pageIsDirty()) {
                 return;

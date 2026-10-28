@@ -11,20 +11,19 @@ class ImageUploadService {
         'image/webp' => 'webp',
     ];
 
-    /** @return array{ok:bool, relatif:?string, erreur:?string} */
+
     public function telechargerCouvertureMenu(?array $fichier, bool $obligatoire = false): array {
         return $this->telecharger($fichier, 'menus', $obligatoire);
     }
 
-    /** @return array{ok:bool, relatif:?string, erreur:?string} */
+
     public function telechargerPhotoPlat(?array $fichier, bool $obligatoire = false): array {
         return $this->telecharger($fichier, 'plats', $obligatoire);
     }
 
-    /**
-     * @return array{ok:bool, relatif:?string, erreur:?string}
-     */
+
     public function telecharger(?array $fichier, string $sousDossier, bool $obligatoire = false): array {
+        
         $sousDossier = trim($sousDossier, '/');
         if (!in_array($sousDossier, ['menus', 'plats'], true)) {
             return ['ok' => false, 'relatif' => null, 'erreur' => 'Dossier image non autorisé.'];

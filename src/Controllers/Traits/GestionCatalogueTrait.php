@@ -1,15 +1,32 @@
 <?php
 // src/Controllers/Traits/GestionCatalogueTrait.php — menus, plats et horaires (admin + employé)
 
+// Pour rappel, un trait est un ensemble de méthodes qui peuvent être utilisées dans une classe
+// Il est utile pour éviter de réécrire le même code dans plusieurs classes
+// Il est également utile pour créer des liens URL avec le paramètre admin ou employe
+// Cela évite donc d'écrire le même code dans AdminController.php et EmployeController.php
+// A noter que trait est un mot réservé de PHP pour désigner ce cas
+
 require_once __DIR__ . '/../../Services/ImageUploadService.php';
 require_once __DIR__ . '/../../Services/Csrf.php';
 
 trait GestionCatalogueTrait {
 
+    // Méthodes de AdminController.php
+    // abstract = méthode qui doit être implémentée dans la classe qui utilise le trait
+    // protected = méthode qui ne peut être utilisée que dans la classe qui utilise le trait
+
+    // Pour rappel S'assure de créer des lien URL avec le paramètre admin
+    // si appelé par AdminController, le paramètre est '/admin'
+    // si appelé par EmployeController, le paramètre est '/employe'
     abstract protected function gestionBasePath(): string;
+
     abstract protected function exigerGestionAcces(): void;
     abstract protected function gestionNavFile(): string;
 
+    // contruit l'URL de base de l'espace de gestion en cours
+    // Exemple : BASE_URL . '/admin'
+    // Pour rappel BASE_URL est défini dans le fichier config.php
     protected function gestionBaseUrl(): string {
         return BASE_URL . $this->gestionBasePath();
     }
@@ -147,6 +164,8 @@ trait GestionCatalogueTrait {
         require __DIR__ . '/../../Views/admin/menu-form.php';
     }
 
+    // Nota le popup "êtes vous sûr" est géré côté front 
+    // dans src\Views\admin\menus.php par un attribut data-confirm sur le formulaire
     public function menuSupprimer(int $id): void {
         $this->exigerGestionAcces();
 
@@ -160,7 +179,8 @@ trait GestionCatalogueTrait {
             $nb = $this->menuModel->compterCommandesActives($id);
             $_SESSION['flash_erreur'] = $this->messageMenuVerrouille($nb)
                 . ' Suppression impossible.';
-        } else {
+        } 
+        else {
             $fichiers = $this->menuModel->getFichiersImages($id);
             if ($this->menuModel->supprimer($id)) {
                 $uploader = new ImageUploadService();
@@ -235,47 +255,78 @@ trait GestionCatalogueTrait {
             $uploader = new ImageUploadService();
 
             if ($action === 'ajouter') {
-                $titrePlat = trim($_POST['titre_plat'] ?? '');
-                if ($titrePlat === '') {
-                    $_SESSION['flash_erreur'] = 'Le nom du plat est obligatoire.';
+                if (!$this->menuModel->peutAjouterPlat($id)) {
+                    $_SESSION['flash_erreur'] = 'Ce menu a déjà ' . MenuModel::MAX_PLATS_MENU
+                        . ' plats. Retirez-en un avant d’en ajouter un autre.';
                 } else {
-                    $upload = $uploader->telechargerPhotoPlat($_FILES['photo_plat'] ?? null, true);
-                    if (!$upload['ok']) {
-                        $_SESSION['flash_erreur'] = $upload['erreur'] ?? 'Erreur d’upload de la photo.';
+                    $titrePlat = trim($_POST['titre_plat'] ?? '');
+                    if ($titrePlat === '') {
+                        $_SESSION['flash_erreur'] = 'Le nom du plat est obligatoire.';
                     } else {
-                        $platId = $this->menuModel->creerPlat($titrePlat, $upload['relatif']);
-                        $this->menuModel->ajouterPlatAuMenu($id, $platId);
-                        $_SESSION['flash_succes'] = 'Plat ajouté au menu.';
+                        $upload = $uploader->telechargerPhotoPlat($_FILES['photo_plat'] ?? null, true);
+                        if (!$upload['ok']) {
+                            $_SESSION['flash_erreur'] = $upload['erreur'] ?? 'Erreur d’upload de la photo.';
+                        } else {
+                            $platId = $this->menuModel->creerPlat($titrePlat, $upload['relatif']);
+                            $this->menuModel->ajouterPlatAuMenu($id, $platId);
+                            $_SESSION['flash_succes'] = 'Plat ajouté au menu.';
+                        }
                     }
                 }
-            } elseif ($action === 'photo_plat' && !empty($_POST['plat_id'])) {
+            } 
+            elseif ($action === 'plat_update' && !empty($_POST['plat_id'])) {
+                // Photo + allergènes en une seule sauvegarde (UX)
                 $platId = (int) $_POST['plat_id'];
                 $aDejaPhoto = trim((string) ($_POST['a_photo'] ?? '')) === '1';
-                $upload = $uploader->telechargerPhotoPlat($_FILES['photo_plat'] ?? null, !$aDejaPhoto);
-                if (!$upload['ok']) {
-                    $_SESSION['flash_erreur'] = $upload['erreur'] ?? 'Erreur d’upload de la photo.';
-                } elseif (!empty($upload['relatif'])) {
-                    $ancien = $this->menuModel->definirImagePlat($platId, $upload['relatif']);
-                    $uploader->supprimerSiUpload($ancien);
-                    $_SESSION['flash_succes'] = 'Photo du plat enregistrée.';
+                $fichierEnvoye = !empty($_FILES['photo_plat']['name']);
+                $erreurPhoto = null;
+
+                if ($fichierEnvoye || !$aDejaPhoto) {
+                    $upload = $uploader->telechargerPhotoPlat($_FILES['photo_plat'] ?? null, !$aDejaPhoto);
+                    if (!$upload['ok']) {
+                        $erreurPhoto = $upload['erreur'] ?? 'Erreur d’upload de la photo.';
+                    } elseif (!empty($upload['relatif'])) {
+                        $ancien = $this->menuModel->definirImagePlat($platId, $upload['relatif']);
+                        $uploader->supprimerSiUpload($ancien);
+                    }
                 }
-            } elseif ($action === 'lier' && !empty($_POST['plat_id'])) {
-                $this->menuModel->ajouterPlatAuMenu($id, (int) $_POST['plat_id']);
-                $_SESSION['flash_succes'] = 'Plat associé au menu.';
-            } elseif ($action === 'retirer' && !empty($_POST['plat_id'])) {
+
+                $ids = array_map('intval', $_POST['allergenes'] ?? []);
+                $this->menuModel->definirAllergenesPlat($platId, $ids);
+
+                if ($erreurPhoto !== null) {
+                    $_SESSION['flash_erreur'] = $erreurPhoto;
+                } else {
+                    $_SESSION['flash_succes'] = 'Plat sauvegardé.';
+                }
+            }
+            elseif ($action === 'lier' && !empty($_POST['plat_id'])) {
+                if (!$this->menuModel->peutAjouterPlat($id)) {
+                    $_SESSION['flash_erreur'] = 'Ce menu a déjà ' . MenuModel::MAX_PLATS_MENU
+                        . ' plats. Retirez-en un avant d’en associer un autre.';
+                } else {
+                    $this->menuModel->ajouterPlatAuMenu($id, (int) $_POST['plat_id']);
+                    $_SESSION['flash_succes'] = 'Plat associé au menu.';
+                }
+            } 
+            elseif ($action === 'retirer' && !empty($_POST['plat_id'])) {
                 $this->menuModel->retirerPlatDuMenu($id, (int) $_POST['plat_id']);
                 if ($this->menuModel->estVisible($id) && !$this->menuModel->peutEtreVisible($id)) {
                     $this->menuModel->setVisible($id, false);
                     $_SESSION['flash_succes'] = 'Plat retiré. Menu masqué automatiquement (moins de '
                         . MenuModel::MIN_PLATS_VISIBLE . ' plats).';
-                } else {
+                } 
+                else {
                     $_SESSION['flash_succes'] = 'Plat retiré du menu.';
                 }
-            } elseif ($action === 'allergenes' && !empty($_POST['plat_id'])) {
-                $platId = (int) $_POST['plat_id'];
-                $ids    = array_map('intval', $_POST['allergenes'] ?? []);
-                $this->menuModel->definirAllergenesPlat($platId, $ids);
-                $_SESSION['flash_succes'] = 'Allergènes enregistrés.';
+            }
+            elseif ($action === 'deplacer' && !empty($_POST['plat_id'])) {
+                $direction = ($_POST['direction'] ?? '') === 'up' ? 'up' : 'down';
+                if ($this->menuModel->deplacerPlatDansMenu($id, (int) $_POST['plat_id'], $direction)) {
+                    $_SESSION['flash_succes'] = 'Ordre des plats mis à jour.';
+                } else {
+                    $_SESSION['flash_erreur'] = 'Impossible de déplacer ce plat.';
+                }
             }
 
             header('Location: ' . $this->gestionBaseUrl() . '/menu/' . $id . '/plats');
@@ -362,6 +413,7 @@ trait GestionCatalogueTrait {
         return $erreurs;
     }
 
+    // bloque si commande en cours
     private function messageMenuVerrouille(int $nbCommandesActives): string {
         $nb = max(1, $nbCommandesActives);
         return $nb === 1

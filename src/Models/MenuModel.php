@@ -7,6 +7,7 @@ class MenuModel {
     private MenuRepository $repository;
 
     public const MIN_PLATS_VISIBLE = MenuRepository::MIN_PLATS_VISIBLE;
+    public const MAX_PLATS_MENU = MenuRepository::MAX_PLATS_MENU;
 
     public function __construct() {
         $this->repository = new MenuRepository();
@@ -116,6 +117,10 @@ class MenuModel {
         return $this->repository->estVisible($menuId);
     }
 
+    public function peutAjouterPlat(int $menuId): bool {
+        return $this->repository->peutAjouterPlat($menuId);
+    }
+
     public function compterMenus(): int {
         return $this->repository->compterMenus();
     }
@@ -150,6 +155,10 @@ class MenuModel {
 
     public function retirerPlatDuMenu(int $menuId, int $platId): void {
         $this->repository->retirerPlatDuMenu($menuId, $platId);
+    }
+
+    public function deplacerPlatDansMenu(int $menuId, int $platId, string $direction): bool {
+        return $this->repository->deplacerPlatDansMenu($menuId, $platId, $direction);
     }
 
     public function definirAllergenesPlat(int $platId, array $allergeneIds): void {

@@ -15,6 +15,9 @@ class AuthGuard {
     public static function exigerRole(array $rolesAutorises, string $redirect = '/espace-employe'): void {
         self::exigerConnexion($redirect);
 
+        // Quand pas de new AuthGuard, on évite de réécrire la classe en la nommant self
+        // Donc équivalent à $role = AuthGuard::roleActuel();
+        // Mais pas équivalent à this->roleActuel(); car suppose un new
         $role = self::roleActuel();
         if (!in_array($role, $rolesAutorises, true)) {
             $_SESSION['flash_erreur'] = 'Vous n\'avez pas les droits pour accéder à cette page.';
@@ -27,9 +30,13 @@ class AuthGuard {
         return $_SESSION['utilisateur']['role'] ?? 'utilisateur';
     }
 
+
+    /* Non utilisé dans le projet
+    // Vérifie si l'utilisateur connecté possède l'un des rôles passés en paramètre
     public static function aRole(array $roles): bool {
         return in_array(self::roleActuel(), $roles, true);
     }
+        */
 
     /** Rôles autorisés dans l'espace employé (admin inclus) */
     public static function rolesEmploye(): array {

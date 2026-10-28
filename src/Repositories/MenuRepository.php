@@ -6,6 +6,8 @@ require_once __DIR__ . '/../Services/SqlDatabase.php';
 class MenuRepository {
     /** Nombre minimal de plats pour pouvoir publier un menu. */
     public const MIN_PLATS_VISIBLE = 3;
+    /** Nombre max de plats par menu (composition fixe ECF) */
+    public const MAX_PLATS_MENU = 3;
 
     private $conn;
 
@@ -197,13 +199,13 @@ class MenuRepository {
     /** Plats d'un menu avec image et allergènes par plat */
     public function getPlatsDetailByMenuId(int $menuId): array {
         $query = "
-            SELECT p.plat_id, p.titre_plat, p.image, a.libelle AS allergene
+            SELECT p.plat_id, p.titre_plat, p.image, cm.ordre, a.libelle AS allergene
             FROM plat p
             JOIN contenu_menu cm ON p.plat_id = cm.plat_id
             LEFT JOIN plat_allergene pa ON p.plat_id = pa.plat_id
             LEFT JOIN allergene a ON pa.allergene_id = a.allergene_id
             WHERE cm.menu_id = :menu_id
-            ORDER BY p.titre_plat ASC, a.libelle ASC
+            ORDER BY cm.ordre ASC, a.libelle ASC
         ";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([':menu_id' => $menuId]);
@@ -215,6 +217,7 @@ class MenuRepository {
                     'plat_id'    => $id,
                     'titre_plat' => $row['titre_plat'],
                     'image'      => $row['image'],
+                    'ordre'      => (int) ($row['ordre'] ?? 0),
                     'allergenes' => [],
                 ];
             }
@@ -335,11 +338,12 @@ class MenuRepository {
             SELECT 
                 p.plat_id,
                 p.titre_plat,
-                p.image
+                p.image,
+                cm.ordre
             FROM plat p
             JOIN contenu_menu cm ON p.plat_id = cm.plat_id
             WHERE cm.menu_id = :menu_id
-            ORDER BY p.titre_plat ASC
+            ORDER BY cm.ordre ASC, p.titre_plat ASC
         ";
 
         $stmt = $this->conn->prepare($query);
@@ -678,6 +682,10 @@ class MenuRepository {
         return $this->compterPlats($menuId) >= self::MIN_PLATS_VISIBLE;
     }
 
+    public function peutAjouterPlat(int $menuId): bool {
+        return $this->compterPlats($menuId) < self::MAX_PLATS_MENU;
+    }
+
     public function estVisible(int $menuId): bool {
         $query = "SELECT visible FROM menu WHERE menu_id = :id";
         $stmt = $this->conn->prepare($query);
@@ -749,17 +757,77 @@ class MenuRepository {
     }
 
     public function ajouterPlatAuMenu(int $menuId, int $platId): void {
+        $stmtMax = $this->conn->prepare("SELECT COALESCE(MAX(ordre), 0) FROM contenu_menu WHERE menu_id = :menu_id");
+        $stmtMax->execute([':menu_id' => $menuId]);
+        $ordre = (int) $stmtMax->fetchColumn() + 1;
+
         $stmt = $this->conn->prepare("
-            INSERT IGNORE INTO contenu_menu (menu_id, plat_id) VALUES (:menu_id, :plat_id)
+            INSERT IGNORE INTO contenu_menu (menu_id, plat_id, ordre)
+            VALUES (:menu_id, :plat_id, :ordre)
         ");
-        $stmt->execute([':menu_id' => $menuId, ':plat_id' => $platId]);
+        $stmt->execute([
+            ':menu_id' => $menuId,
+            ':plat_id' => $platId,
+            ':ordre'   => $ordre,
+        ]);
         $this->synchroniserGalerieMenu($menuId);
     }
 
     public function retirerPlatDuMenu(int $menuId, int $platId): void {
         $stmt = $this->conn->prepare("DELETE FROM contenu_menu WHERE menu_id = :menu_id AND plat_id = :plat_id");
         $stmt->execute([':menu_id' => $menuId, ':plat_id' => $platId]);
+        $this->renumeroterPlatsMenu($menuId);
         $this->synchroniserGalerieMenu($menuId);
+    }
+
+    /** Échange la position d'un plat avec son voisin (up / down). */
+    public function deplacerPlatDansMenu(int $menuId, int $platId, string $direction): bool {
+        $plats = $this->getPlatsByMenuId($menuId);
+        $index = null;
+        foreach ($plats as $i => $plat) {
+            if ((int) $plat['plat_id'] === $platId) {
+                $index = $i;
+                break;
+            }
+        }
+        if ($index === null) {
+            return false;
+        }
+
+        $voisin = $direction === 'up' ? $index - 1 : $index + 1;
+        if ($voisin < 0 || $voisin >= count($plats)) {
+            return false;
+        }
+
+        $ordreA = (int) $plats[$index]['ordre'];
+        $ordreB = (int) $plats[$voisin]['ordre'];
+        $platB = (int) $plats[$voisin]['plat_id'];
+
+        $stmt = $this->conn->prepare("
+            UPDATE contenu_menu SET ordre = :ordre
+            WHERE menu_id = :menu_id AND plat_id = :plat_id
+        ");
+        $stmt->execute([':ordre' => $ordreB, ':menu_id' => $menuId, ':plat_id' => $platId]);
+        $stmt->execute([':ordre' => $ordreA, ':menu_id' => $menuId, ':plat_id' => $platB]);
+        $this->synchroniserGalerieMenu($menuId);
+        return true;
+    }
+
+    private function renumeroterPlatsMenu(int $menuId): void {
+        $plats = $this->getPlatsByMenuId($menuId);
+        $stmt = $this->conn->prepare("
+            UPDATE contenu_menu SET ordre = :ordre
+            WHERE menu_id = :menu_id AND plat_id = :plat_id
+        ");
+        $ordre = 1;
+        foreach ($plats as $plat) {
+            $stmt->execute([
+                ':ordre'   => $ordre,
+                ':menu_id' => $menuId,
+                ':plat_id' => (int) $plat['plat_id'],
+            ]);
+            $ordre++;
+        }
     }
 
     public function definirAllergenesPlat(int $platId, array $allergeneIds): void {

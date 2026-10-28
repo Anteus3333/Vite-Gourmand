@@ -66,15 +66,15 @@ INSERT INTO plat (titre_plat, image) VALUES
 ('Langoustines grillées', 'plats/langoustine.jpg'),
 ('Pavé de turbot', 'plats/turbot.jpg');
 
-INSERT INTO contenu_menu (menu_id, plat_id) VALUES
-(1, 1), (1, 2), (1, 3),
-(2, 4), (2, 5), (2, 6),
-(3, 12), (3, 13), (3, 14),
-(4, 7), (4, 8), (4, 9),
-(5, 10), (5, 5), (5, 9),
-(6, 5), (6, 8), (6, 6),
-(7, 11), (7, 2), (7, 6),
-(8, 12), (8, 13), (8, 15);
+INSERT INTO contenu_menu (menu_id, plat_id, ordre) VALUES
+(1, 1, 1), (1, 2, 2), (1, 3, 3),
+(2, 4, 1), (2, 5, 2), (2, 6, 3),
+(3, 12, 1), (3, 13, 2), (3, 14, 3),
+(4, 7, 1), (4, 8, 2), (4, 9, 3),
+(5, 10, 1), (5, 5, 2), (5, 9, 3),
+(6, 5, 1), (6, 8, 2), (6, 6, 3),
+(7, 11, 1), (7, 2, 2), (7, 6, 3),
+(8, 12, 1), (8, 13, 2), (8, 15, 3);
 
 INSERT INTO plat_allergene (plat_id, allergene_id) VALUES
 (1, 5), (2, 1), (2, 5), (3, 2), (3, 5), (3, 1),
