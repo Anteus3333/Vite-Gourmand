@@ -10,12 +10,12 @@ class MysqlStatsModel {
         $this->repository = new MysqlStatsRepository();
     }
 
-    public function getAllPourStatsMongo(): array {
-        return $this->repository->getAllPourStatsMongo();
+    public function getAllPourStatsMysql(): array {
+        return $this->repository->getAllPourStatsMysql();
     }
 
-    public function getPourStatsMongo(string $numero): ?array {
-        return $this->repository->getPourStatsMongo($numero);
+    public function getPourStatsMysql(string $numero): ?array {
+        return $this->repository->getPourStatsMysql($numero);
     }
 
     public function getStatsParMenu(?string $dateDebut = null, ?string $dateFin = null, ?int $menuId = null): array {

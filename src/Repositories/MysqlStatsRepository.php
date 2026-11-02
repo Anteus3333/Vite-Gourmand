@@ -11,8 +11,8 @@ class MysqlStatsRepository {
         $this->conn = $database->getConnection();
     }
 
-    // Récupère le statut de toutes les commandes
-    public function getAllPourStatsMongo(): array {
+    // Récupère les commandes au format stats (export / sync)
+    public function getAllPourStatsMysql(): array {
 
         // Jointure entre Commande, commande_menu et menu
         $query = "
@@ -33,8 +33,8 @@ class MysqlStatsRepository {
         return $stmt->fetchAll() ?: [];
     }
 
-    // Récupère le statut d'une commande
-    public function getPourStatsMongo(string $numero): ?array {
+    // Récupère une commande au format stats
+    public function getPourStatsMysql(string $numero): ?array {
         $query = "
             SELECT c.numero_commande,
                    DATE(c.date_commande) AS date_commande,

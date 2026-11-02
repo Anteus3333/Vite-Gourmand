@@ -91,6 +91,11 @@ ob_start();
     </div>
 </section>
 
+
+<!--
+Ici JS envoyé non par $scriptsFooter dans layout.php mais directement dans la vue menus.php
+via le buffer $contenuPage = ob_get_clean();
+--
 <script src="<?= BASE_URL ?>/js/menus.js"></script>
 
 <?php

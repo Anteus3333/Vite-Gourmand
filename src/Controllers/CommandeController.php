@@ -153,7 +153,9 @@ class CommandeController {
                     'utilisateur_id'    => (int) $_SESSION['utilisateur']['id'],
                 ], (int) $menu['menu_id']);
 
-                $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
+                // Dès que la commande est enregistrée en MySQL, on l'enregistre en MongoDB
+                // si pas d'erreur sur l'enregistrement en MySQL, on enregistre en MongoDB
+                $docStats = (new MysqlStatsModel())->getPourStatsMysql($numero);
                 if ($docStats) { (new MongoStatsModel())->enregistrerCommande($docStats); }
 
                 $this->envoyerMailConfirmation($old, $menu, $numero, $tarif);

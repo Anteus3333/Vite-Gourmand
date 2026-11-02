@@ -1,13 +1,18 @@
 <?php ob_start();
+
+// Objectif de ces 3 lignes éviter une erreur si data vide
 $gestionBase = $gestionBase ?? (BASE_URL . '/admin');
 $gestionNavFile = $gestionNavFile ?? __DIR__ . '/_nav.php';
+// Ici si data vide, on autorise un tableau vide (pas de commande active pour un menu)
 $commandesActivesParMenu = $commandesActivesParMenu ?? [];
 ?>
 
+<!-- Hero -->
 <section class="compte-hero admin-hero compte-hero-compact">
     <h1>Gestion des menus</h1>
     <p>Créez, modifiez et gérez le stock de vos menus. Un menu doit contenir au moins <?= (int) ($minPlatsVisible ?? 3) ?> plats avant de pouvoir être coché « Visible ».</p>
 </section>
+
 
 <section class="compte-page admin-menus-page">
     <?php require $gestionNavFile; ?>
@@ -34,22 +39,25 @@ $commandesActivesParMenu = $commandesActivesParMenu ?? [];
                 <tbody>
                     <?php foreach ($menus as $m): ?>
                         <?php
-                        $menuId = (int) $m['menu_id'];
-                        $nbActives = (int) ($commandesActivesParMenu[$menuId] ?? 0);
-                        $nbPlats = (int) (($platsParMenu ?? [])[$menuId] ?? 0);
-                        $minPlats = (int) ($minPlatsVisible ?? 3);
-                        $verrouille = $nbActives > 0;
-                        $estVisible = (int) ($m['visible'] ?? 1) === 1;
-                        $peutPublier = $nbPlats >= $minPlats;
-                        $rowClasses = [];
-                        if ($verrouille) {
-                            $rowClasses[] = 'admin-menu-row-locked';
-                        }
-                        if (!$estVisible) {
-                            $rowClasses[] = 'admin-menu-row-hidden';
-                        }
+                            $menuId = (int) $m['menu_id'];
+                            $nbActives = (int) ($commandesActivesParMenu[$menuId] ?? 0);
+                            $nbPlats = (int) (($platsParMenu ?? [])[$menuId] ?? 0);
+                            $minPlats = (int) ($minPlatsVisible ?? 3);
+                            $verrouille = $nbActives > 0;
+                            $estVisible = (int) ($m['visible'] ?? 1) === 1;
+                            $peutPublier = $nbPlats >= $minPlats;
+                            $rowClasses = [];
+                            if ($verrouille) {
+                                $rowClasses[] = 'admin-menu-row-locked';
+                            }
+                            if (!$estVisible) {
+                                $rowClasses[] = 'admin-menu-row-hidden';
+                            }
                         ?>
+
                         <tr<?= $rowClasses ? ' class="' . htmlspecialchars(implode(' ', $rowClasses)) . '"' : '' ?>>
+                            
+                            <!-- Chaque td est uen colonne de la table -->
                             <td class="col-visible">
                                 <form method="post" action="<?= $gestionBase ?>/menu/<?= $menuId ?>/visibilite"
                                       class="inline-form menu-visibilite-form"
@@ -103,8 +111,10 @@ $commandesActivesParMenu = $commandesActivesParMenu ?? [];
                                     <button type="submit" class="btn btn-sm btn-outline btn-danger">Suppr.</button>
                                 </form>
                             </td>
+
                         </tr>
                     <?php endforeach; ?>
+                    
                 </tbody>
             </table>
         </div>

@@ -147,6 +147,7 @@
             </nav>
         </div>
     </footer>
+    
 
     <?php $jsVersion = @filemtime(__DIR__ . '/../../public/js/main.js') ?: time(); ?>
     <script src="<?= BASE_URL ?>/js/main.js?v=<?= $jsVersion ?>"></script>

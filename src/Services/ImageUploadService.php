@@ -87,7 +87,10 @@ class ImageUploadService {
     }
 
     /** Supprime un fichier uploadé (préfixe upload-) sous public/images/. */
+    // Cas de figure : nouvelle image, image d'un menu ou plat qui a été supprimé
+    // Utilisé dans Controllers/GestionCatalogueTrait.php
     public function supprimerSiUpload(?string $relatif): void {
+
         $relatif = trim((string) $relatif);
         if ($relatif === '' || !str_starts_with(basename($relatif), 'upload-')) {
             return;
@@ -104,7 +107,13 @@ class ImageUploadService {
     }
 
     private function ecrireImageSecurisee(string $tmp, string $dest, string $mime): bool {
+
+        // Fonction native PHP pour vérifier si la bibliothèque GD est disponible
+        // GD est une bibliothèque PHP pour la manipulation d'images
+        // intérêt de cet extension : on redecode et reencode l'image
+        // C'est une sécurité pour éviter les attaques de type "image spoofing"
         if (extension_loaded('gd')) {
+
             $image = match ($mime) {
                 'image/jpeg' => @imagecreatefromjpeg($tmp),
                 'image/png'  => @imagecreatefrompng($tmp),
@@ -120,10 +129,15 @@ class ImageUploadService {
                 'image/webp' => function_exists('imagewebp') && imagewebp($image, $dest, 85),
                 default      => false,
             };
+
+            // Fonction native PHP pour détruire l'image en mémoire
+            // L'image, elle est déjà écrite sur le disque à l'emplacement $dest
             imagedestroy($image);
             return (bool) $ok;
         }
 
+        // Fonction native PHP pour déplacer le fichier uploadé vers le dossier de destination
+        // En cas d'indisponibilité de GD
         return move_uploaded_file($tmp, $dest);
     }
 

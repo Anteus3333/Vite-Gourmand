@@ -176,7 +176,7 @@ class CompteController {
 
         $this->commandeModel->annuler($numero, (int) $commande['menu_id']);
 
-        $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
+        $docStats = (new MysqlStatsModel())->getPourStatsMysql($numero);
         if ($docStats) {
             (new MongoStatsModel())->enregistrerCommande($docStats);
         }

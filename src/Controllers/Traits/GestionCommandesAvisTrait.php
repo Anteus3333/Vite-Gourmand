@@ -80,7 +80,7 @@ trait GestionCommandesAvisTrait {
         if ($this->commandeModel->changerStatut($numero, $nouveauStatut, (int) $commande['menu_id'])) {
             $_SESSION['flash_succes'] = 'Statut mis à jour : ' . $this->commandeModel->libelleStatut($nouveauStatut) . '.';
 
-            $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
+            $docStats = (new MysqlStatsModel())->getPourStatsMysql($numero);
             if ($docStats) {
                 (new MongoStatsModel())->enregistrerCommande($docStats);
             }
@@ -139,7 +139,7 @@ trait GestionCommandesAvisTrait {
             $_SESSION['flash_succes'] = 'Commande annulée. Le client a été notifié par e-mail.';
             $this->notifierAnnulationEmploye($commande, $motif, $modeContact);
 
-            $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
+            $docStats = (new MysqlStatsModel())->getPourStatsMysql($numero);
             if ($docStats) {
                 (new MongoStatsModel())->enregistrerCommande($docStats);
             }

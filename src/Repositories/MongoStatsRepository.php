@@ -50,7 +50,7 @@ class MongoStatsRepository {
      */
     public function synchroniserDepuisMysql(): int {
         $mysqlStatsRepository = new MysqlStatsRepository();
-        $lignes = $mysqlStatsRepository->getAllPourStatsMongo();
+        $lignes = $mysqlStatsRepository->getAllPourStatsMysql();
         $col = MongoDatabase::collection();
 
         // Suppression de toutes les commandes dans la collection MongoDB

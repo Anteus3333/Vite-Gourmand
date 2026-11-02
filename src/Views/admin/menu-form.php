@@ -17,6 +17,7 @@ $disabledAttr = $menuVerrouille ? ' disabled' : '';
     <?php require $gestionNavFile; ?>
 
     <div class="compte-card compte-card-narrow admin-form-card">
+
         <?php if ($menuVerrouille): ?>
             <div class="alert alert-erreur" role="alert">
                 <strong>Modification impossible.</strong>
@@ -25,6 +26,10 @@ $disabledAttr = $menuVerrouille ? ' disabled' : '';
             </div>
         <?php endif; ?>
 
+        <!-- 
+        Affichage des erreurs 
+        $erreurs est défini selon les cas de figure dans le trait GestionCatalogueTrait
+        -->
         <?php if (!empty($erreurs)): ?>
             <div class="alert alert-erreur" role="alert">
                 <ul><?php foreach ($erreurs as $e): ?><li><?= htmlspecialchars($e) ?></li><?php endforeach; ?></ul>
