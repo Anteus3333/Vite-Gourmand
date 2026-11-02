@@ -9,7 +9,8 @@ require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/Csrf.php';
 require_once __DIR__ . '/../Services/GmailMailer.php';
-require_once __DIR__ . '/../Models/CommandeStatsModel.php';
+require_once __DIR__ . '/../Models/MongoStatsModel.php';
+require_once __DIR__ . '/../Models/MysqlStatsModel.php';
 
 class CompteController {
     private CommandeModel $commandeModel;
@@ -175,9 +176,9 @@ class CompteController {
 
         $this->commandeModel->annuler($numero, (int) $commande['menu_id']);
 
-        $docStats = $this->commandeModel->getPourStatsMongo($numero);
+        $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
         if ($docStats) {
-            (new CommandeStatsModel())->enregistrerCommande($docStats);
+            (new MongoStatsModel())->enregistrerCommande($docStats);
         }
 
         $_SESSION['flash_succes'] = 'Votre commande a bien été annulée.';

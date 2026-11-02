@@ -1,16 +1,20 @@
 <?php
 // src/Controllers/Traits/GestionCommandesAvisTrait.php — commandes et avis (admin + employé)
 
-require_once __DIR__ . '/../../Models/CommandeStatsModel.php';
+require_once __DIR__ . '/../../Models/MongoStatsModel.php';
+require_once __DIR__ . '/../../Models/MysqlStatsModel.php';
 require_once __DIR__ . '/../../Services/UrlHelper.php';
 require_once __DIR__ . '/../../Services/Csrf.php';
 require_once __DIR__ . '/../../Services/GmailMailer.php';
 
 trait GestionCommandesAvisTrait {
 
+    // vient de AdminController.php ou EmployeController.php
     abstract protected function gestionBasePath(): string;
     abstract protected function exigerGestionAcces(): void;
     abstract protected function gestionNavFile(): string;
+
+    // vient de Traits/GesstionCatalogueTrait.php
     abstract protected function gestionBaseUrl(): string;
     abstract protected function gestionTitreEspace(): string;
 
@@ -76,17 +80,19 @@ trait GestionCommandesAvisTrait {
         if ($this->commandeModel->changerStatut($numero, $nouveauStatut, (int) $commande['menu_id'])) {
             $_SESSION['flash_succes'] = 'Statut mis à jour : ' . $this->commandeModel->libelleStatut($nouveauStatut) . '.';
 
-            $docStats = $this->commandeModel->getPourStatsMongo($numero);
+            $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
             if ($docStats) {
-                (new CommandeStatsModel())->enregistrerCommande($docStats);
+                (new MongoStatsModel())->enregistrerCommande($docStats);
             }
 
             if ($this->commandeModel->estTerminee($nouveauStatut)) {
                 $this->notifierAvisDisponible($commande);
-            } elseif ($this->commandeModel->cleStatut($nouveauStatut) === 'attente_materiel') {
+            } 
+            elseif ($this->commandeModel->cleStatut($nouveauStatut) === 'attente_materiel') {
                 $this->notifierAttenteMateriel($commande);
             }
-        } else {
+        } 
+        else {
             $_SESSION['flash_erreur'] = 'Transition de statut non autorisée.';
         }
 
@@ -133,11 +139,12 @@ trait GestionCommandesAvisTrait {
             $_SESSION['flash_succes'] = 'Commande annulée. Le client a été notifié par e-mail.';
             $this->notifierAnnulationEmploye($commande, $motif, $modeContact);
 
-            $docStats = $this->commandeModel->getPourStatsMongo($numero);
+            $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
             if ($docStats) {
-                (new CommandeStatsModel())->enregistrerCommande($docStats);
+                (new MongoStatsModel())->enregistrerCommande($docStats);
             }
-        } else {
+        }
+        else {
             $_SESSION['flash_erreur'] = 'Cette commande ne peut pas être annulée à ce stade.';
         }
 

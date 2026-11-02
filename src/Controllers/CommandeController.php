@@ -4,11 +4,13 @@
 require_once __DIR__ . '/../Models/CommandeModel.php';
 require_once __DIR__ . '/../Models/MenuModel.php';
 require_once __DIR__ . '/../Models/UtilisateurModel.php';
+
 require_once __DIR__ . '/../Services/PrixCommandeService.php';
 require_once __DIR__ . '/../Services/DistanceService.php';
 require_once __DIR__ . '/../Services/GmailMailer.php';
 require_once __DIR__ . '/../Services/Csrf.php';
-require_once __DIR__ . '/../Models/CommandeStatsModel.php';
+require_once __DIR__ . '/../Models/MongoStatsModel.php';
+require_once __DIR__ . '/../Models/MysqlStatsModel.php';
 
 class CommandeController {
     private CommandeModel $commandeModel;
@@ -151,10 +153,8 @@ class CommandeController {
                     'utilisateur_id'    => (int) $_SESSION['utilisateur']['id'],
                 ], (int) $menu['menu_id']);
 
-                $docStats = $this->commandeModel->getPourStatsMongo($numero);
-                if ($docStats) {
-                    (new CommandeStatsModel())->enregistrerCommande($docStats);
-                }
+                $docStats = (new MysqlStatsModel())->getPourStatsMongo($numero);
+                if ($docStats) { (new MongoStatsModel())->enregistrerCommande($docStats); }
 
                 $this->envoyerMailConfirmation($old, $menu, $numero, $tarif);
 

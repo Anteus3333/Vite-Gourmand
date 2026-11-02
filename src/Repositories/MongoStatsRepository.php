@@ -1,19 +1,22 @@
 <?php
-// src/Repositories/CommandeStatsRepository.php — repository NoSQL (MongoDB Atlas) — stats dashboard depuis MongoDB Atlas
+// src/Repositories/MongoStatsRepository.php — repository NoSQL (MongoDB Atlas) — stats dashboard
 
 require_once __DIR__ . '/../Services/MongoDatabase.php';
-require_once __DIR__ . '/CommandeRepository.php';
+require_once __DIR__ . '/MysqlStatsRepository.php';
 require_once __DIR__ . '/MenuRepository.php';
 
 // Regex est une classe qui permet de manipuler les expressions régulières
 // Arborescence d'installation de MongoDB dans vendor
+// Regex utilisé pour la recherche de statut dans la collection MongoDB
+// dans la fonction private filtreMatch
 use MongoDB\BSON\Regex;
 
-class CommandeStatsRepository {
+class MongoStatsRepository {
 
     // le ? permet de dire que la variable peut être null
     private static ?string $derniereErreur = null;
 
+    // Retourne la dernière erreur survenue quand une opération MongoDB a échoué
     public function derniereErreur(): ?string {
         // self::$derniereErreur est une variable statique qui contient la dernière erreur
         return self::$derniereErreur;
@@ -34,7 +37,7 @@ class CommandeStatsRepository {
         try {
             MongoDatabase::client()->selectDatabase(MongoDatabase::config()['database'])->command(['ping' => 1]);
             return true;
-        } 
+        }
         catch (Throwable $e) {
             self::$derniereErreur = $e->getMessage();
             return false;
@@ -46,8 +49,8 @@ class CommandeStatsRepository {
      * @return int nombre de documents écrits
      */
     public function synchroniserDepuisMysql(): int {
-        $commandeRepository = new CommandeRepository();
-        $lignes = $commandeRepository->getAllPourStatsMongo();
+        $mysqlStatsRepository = new MysqlStatsRepository();
+        $lignes = $mysqlStatsRepository->getAllPourStatsMongo();
         $col = MongoDatabase::collection();
 
         // Suppression de toutes les commandes dans la collection MongoDB
@@ -58,7 +61,7 @@ class CommandeStatsRepository {
         foreach ($lignes as $ligne) {
 
             // Conversion de la ligne MySQL en document MongoDB
-            // documentDepuisLigne est une méthode de la classe CommandeStatsRepository
+            // documentDepuisLigne est une méthode de la classe MongoStatsRepository
             $doc = $this->documentDepuisLigne($ligne);
             $ops[] = [
                 'replaceOne' => [
@@ -76,7 +79,7 @@ class CommandeStatsRepository {
         // Bulk par paquets
         $ecrits = 0;
 
-        // array_chunk est une fonction qui permet de diviser un tableau 
+        // array_chunk est une fonction qui permet de diviser un tableau
         // en plusieurs tableaux de taille 100
         foreach (array_chunk($ops, 100) as $chunk) {
             $result = $col->bulkWrite($chunk);
@@ -106,10 +109,10 @@ class CommandeStatsRepository {
                 $doc,
                 ['upsert' => true]
             );
-        } 
+        }
         catch (Throwable $e) {
             // Ne bloque pas le métier MySQL si Atlas est indisponible
-            error_log('CommandeStatsRepository: ' . $e->getMessage());
+            error_log('MongoStatsRepository: ' . $e->getMessage());
         }
     }
 
@@ -206,6 +209,11 @@ class CommandeStatsRepository {
     }
 
     private function filtreMatch(?string $dateDebut, ?string $dateFin, ?int $menuId): array {
+
+        // Filtre pour exclure les commandes annulées
+        // ^annul = statut qui commence par annul
+        // i = insensible à la casse
+        // $not = exclut les commandes qui ont un statut qui commence par annul
         $match = [
             'statut' => ['$not' => new Regex('^annul', 'i')],
         ];

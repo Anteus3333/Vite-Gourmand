@@ -10,11 +10,11 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/../src/Repositories/CommandeStatsRepository.php';
+require_once __DIR__ . '/../src/Repositories/MongoStatsRepository.php';
 
 echo "Sync stats MySQL → MongoDB…\n";
 
-$stats = new CommandeStatsRepository();
+$stats = new MongoStatsRepository();
 
 if (!MongoDatabase::estConfigure()) {
     fwrite(STDERR, "Échec : configurez config/mongodb.local.php (URI Atlas).\n");

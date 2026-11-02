@@ -172,7 +172,8 @@ Flux : **Controller → Model (métier) → Repository (SQL / Mongo)**.
 |--------|----------|------|
 | Models | `src/Models/*Model.php` | Règles métier, API utilisée par les Controllers |
 | Repositories SQL | `src/Repositories/*Repository.php` | Requêtes MySQL uniquement (PDO) |
-| Repository NoSQL | `src/Repositories/CommandeStatsRepository.php` | Stats commandes (MongoDB Atlas) |
+| Repository SQL stats | `src/Repositories/MysqlStatsRepository.php` | Stats dashboard + export sync (MySQL) |
+| Repository NoSQL | `src/Repositories/MongoStatsRepository.php` | Stats commandes (MongoDB Atlas) |
 | Connexion SQL | `src/Services/SqlDatabase.php` | PDO MySQL centralisé |
 | Connexion NoSQL | `src/Services/MongoDatabase.php` | Client MongoDB Atlas |
 

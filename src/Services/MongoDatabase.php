@@ -1,6 +1,6 @@
 <?php
 // src/Services/MongoDatabase.php — connexion MongoDB Atlas centralisée (ECF NoSQL)
-// Les requêtes documents passent par CommandeStatsRepository (pattern Repository).
+// Les requêtes documents passent par MongoStatsRepository (pattern Repository).
 
 // Par contre comme pour Services/SqlDatabase.php, on a un fichier de configuration
 // config/mongodb.php

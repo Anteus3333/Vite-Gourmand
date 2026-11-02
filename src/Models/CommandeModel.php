@@ -78,22 +78,6 @@ class CommandeModel {
         return $this->repository->compterParStatut();
     }
 
-    public function getAllPourStatsMongo(): array {
-        return $this->repository->getAllPourStatsMongo();
-    }
-
-    public function getPourStatsMongo(string $numero): ?array {
-        return $this->repository->getPourStatsMongo($numero);
-    }
-
-    public function getStatsParMenu(?string $dateDebut = null, ?string $dateFin = null, ?int $menuId = null): array {
-        return $this->repository->getStatsParMenu($dateDebut, $dateFin, $menuId);
-    }
-
-    public function getTotauxStats(?string $dateDebut = null, ?string $dateFin = null, ?int $menuId = null): array {
-        return $this->repository->getTotauxStats($dateDebut, $dateFin, $menuId);
-    }
-
     public function getTransitionsPossibles(string $statutActuel): array {
         return $this->repository->getTransitionsPossibles($statutActuel);
     }
